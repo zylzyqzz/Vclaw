@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import type { OpenClawConfig } from "../config/config.js";
 import {
   loadConfig,
@@ -193,8 +193,8 @@ export function buildGatewayConnectionDetails(
         allowPrivateWs
           ? undefined
           : "Break-glass (trusted private networks only): set OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1",
-        "Doctor: weiclaw doctor --fix",
-        "Docs: https://docs.openclaw.ai/gateway/remote",
+        "Doctor: vclaw doctor --fix",
+        "Docs: https://docs.vclaw.ai/gateway/remote",
       ].join("\n"),
     );
   }
@@ -755,3 +755,4 @@ export async function callGateway<T = Record<string, unknown>>(
 export function randomIdempotencyKey() {
   return randomUUID();
 }
+

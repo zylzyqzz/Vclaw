@@ -1,4 +1,4 @@
-import { createHmac, createHash } from "node:crypto";
+﻿import { createHmac, createHash } from "node:crypto";
 import type { ReasoningLevel, ThinkLevel } from "../auto-reply/thinking.js";
 import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import type { MemoryCitationsMode } from "../config/types.memory.js";
@@ -130,11 +130,11 @@ function buildMessagingSection(params: {
   }
   return [
     "## Messaging",
-    "- Reply in current session → automatically routes to the source channel (Signal, Telegram, etc.)",
-    "- Cross-session messaging → use sessions_send(sessionKey, message)",
-    "- Sub-agent orchestration → use subagents(action=list|steer|kill)",
+    "- Reply in current session -> automatically routes to the source channel (Signal, Telegram, etc.)",
+    "- Cross-session messaging -> use sessions_send(sessionKey, message)",
+    "- Sub-agent orchestration -> use subagents(action=list|steer|kill)",
     `- Runtime-generated completion events may ask for a user update. Rewrite those in your normal assistant voice and send the update (do not forward raw internal metadata or default to ${SILENT_REPLY_TOKEN}).`,
-    "- Never use exec/curl for provider messaging; WeiClaw handles all routing internally.",
+    "- Never use exec/curl for provider messaging; Vclaw handles all routing internally.",
     params.availableTools.has("message")
       ? [
           "",
@@ -175,11 +175,11 @@ function buildDocsSection(params: { docsPath?: string; isMinimal: boolean; readT
   }
   return [
     "## Documentation",
-    `WeiClaw docs path: ${docsPath}`,
-    "Mirror: https://docs.openclaw.ai",
-    "Upstream source: https://github.com/openclaw/openclaw",
-    "For WeiClaw behavior, commands, config, or architecture: consult local docs first.",
-    "When diagnosing issues, run `weiclaw status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).",
+    `Vclaw docs path: ${docsPath}`,
+    "Mirror: https://docs.vclaw.ai",
+    "Upstream source: https://github.com/zylzyqzz/Vclaw",
+    "For Vclaw behavior, commands, config, or architecture: consult local docs first.",
+    "When diagnosing issues, run `vclaw status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).",
     "",
   ];
 }
@@ -253,10 +253,10 @@ export function buildAgentSystemPrompt(params: {
     nodes: "List/describe/notify/camera/screen on paired nodes",
     cron: "Manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
     message: "Send messages and channel actions",
-    gateway: "Restart, apply config, or run updates on the running OpenClaw process",
+    gateway: "Restart, apply config, or run updates on the running Vclaw process",
     agents_list: acpSpawnRuntimeEnabled
-      ? 'List OpenClaw agent ids allowed for sessions_spawn when runtime="subagent" (not ACP harness ids)'
-      : "List OpenClaw agent ids allowed for sessions_spawn",
+      ? 'List Vclaw agent ids allowed for sessions_spawn when runtime="subagent" (not ACP harness ids)'
+      : "List Vclaw agent ids allowed for sessions_spawn",
     sessions_list: "List other sessions (incl. sub-agents) with filters/last",
     sessions_history: "Fetch history for another session/sub-agent",
     sessions_send: "Send a message to another session/sub-agent",
@@ -265,7 +265,7 @@ export function buildAgentSystemPrompt(params: {
       : "Spawn an isolated sub-agent session",
     subagents: "List, steer, or kill sub-agent runs for this requester session",
     session_status:
-      "Show a /status-equivalent status card (usage + time + Reasoning/Verbose/Elevated); use for model-use questions (📊 session_status); optional per-session model override",
+      "Show a /status-equivalent status card (usage + time + Reasoning/Verbose/Elevated); use for model-use questions (馃搳 session_status); optional per-session model override",
     image: "Analyze an image with the configured image model",
   };
 
@@ -414,11 +414,11 @@ export function buildAgentSystemPrompt(params: {
 
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
-    return "You are a personal assistant running inside WeiClaw.";
+    return "You are a personal assistant running inside Vclaw.";
   }
 
   const lines = [
-    "You are a personal assistant running inside WeiClaw.",
+    "You are a personal assistant running inside Vclaw.",
     "",
     "## Tooling",
     "Tool availability (filtered by policy):",
@@ -464,26 +464,26 @@ export function buildAgentSystemPrompt(params: {
     "When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.",
     "",
     ...safetySection,
-    "## WeiClaw CLI Quick Reference",
-    "WeiClaw is controlled via subcommands. Do not invent commands.",
+    "## Vclaw CLI Quick Reference",
+    "Vclaw is controlled via subcommands. Do not invent commands.",
     "To manage the Gateway daemon service (start/stop/restart):",
-    "- weiclaw gateway status",
-    "- weiclaw gateway start",
-    "- weiclaw gateway stop",
-    "- weiclaw gateway restart",
-    "If unsure, ask the user to run `weiclaw help` (or `weiclaw gateway --help`) and paste the output.",
+    "- vclaw gateway status",
+    "- vclaw gateway start",
+    "- vclaw gateway stop",
+    "- vclaw gateway restart",
+    "If unsure, ask the user to run `vclaw help` (or `vclaw gateway --help`) and paste the output.",
     "",
     ...skillsSection,
     ...memorySection,
     // Skip self-update for subagent/none modes
-    hasGateway && !isMinimal ? "## WeiClaw Self-Update" : "",
+    hasGateway && !isMinimal ? "## Vclaw Self-Update" : "",
     hasGateway && !isMinimal
       ? [
           "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
           "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
           "Use config.schema.lookup with a specific dot path to inspect only the relevant config subtree before making config changes or answering config-field questions; avoid guessing field names/types.",
           "Actions: config.schema.lookup, config.get, config.apply (validate + write full config, then restart), config.patch (partial update, merges with existing), update.run (update deps or git, then restart).",
-          "After restart, WeiClaw pings the last active session automatically.",
+          "After restart, Vclaw pings the last active session automatically.",
         ].join("\n")
       : "",
     hasGateway && !isMinimal ? "" : "",
@@ -500,7 +500,7 @@ export function buildAgentSystemPrompt(params: {
       : "",
     params.modelAliasLines && params.modelAliasLines.length > 0 && !isMinimal ? "" : "",
     userTimezone
-      ? "If you need the current date, time, or day of week, run session_status (📊 session_status)."
+      ? "If you need the current date, time, or day of week, run session_status (馃搳 session_status)."
       : "",
     "## Workspace",
     `Your working directory is: ${displayWorkspaceDir}`,
@@ -561,7 +561,7 @@ export function buildAgentSystemPrompt(params: {
       userTimezone,
     }),
     "## Workspace Files (injected)",
-    "These user-editable files are loaded by OpenClaw and included below in Project Context.",
+    "These user-editable files are loaded by Vclaw and included below in Project Context.",
     "",
     ...buildReplyTagsSection(isMinimal),
     ...buildMessagingSection({
@@ -632,7 +632,7 @@ export function buildAgentSystemPrompt(params: {
       lines.push("");
     }
     if (bootstrapTruncationWarningLines.length > 0) {
-      lines.push("⚠ Bootstrap truncation warning:");
+      lines.push("Bootstrap truncation warning:");
       for (const warningLine of bootstrapTruncationWarningLines) {
         lines.push(`- ${warningLine}`);
       }
@@ -649,14 +649,14 @@ export function buildAgentSystemPrompt(params: {
       "## Silent Replies",
       `When you have nothing to say, respond with ONLY: ${SILENT_REPLY_TOKEN}`,
       "",
-      "⚠️ Rules:",
-      "- It must be your ENTIRE message — nothing else",
+      "Rules:",
+      "- It must be your ENTIRE message - nothing else",
       `- Never append it to an actual response (never include "${SILENT_REPLY_TOKEN}" in real replies)`,
       "- Never wrap it in markdown or code blocks",
       "",
-      `❌ Wrong: "Here's help... ${SILENT_REPLY_TOKEN}"`,
-      `❌ Wrong: "${SILENT_REPLY_TOKEN}"`,
-      `✅ Right: ${SILENT_REPLY_TOKEN}`,
+      `Wrong: "Here's help... ${SILENT_REPLY_TOKEN}"`,
+      `Wrong: "${SILENT_REPLY_TOKEN}"`,
+      `Right: ${SILENT_REPLY_TOKEN}`,
       "",
     );
   }
@@ -668,7 +668,7 @@ export function buildAgentSystemPrompt(params: {
       heartbeatPromptLine,
       "If you receive a heartbeat poll (a user message matching the heartbeat prompt above), and there is nothing that needs attention, reply exactly:",
       "HEARTBEAT_OK",
-      'OpenClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).',
+      'Vclaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).',
       'If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.',
       "",
     );
@@ -721,3 +721,4 @@ export function buildRuntimeLine(
     .filter(Boolean)
     .join(" | ")}`;
 }
+

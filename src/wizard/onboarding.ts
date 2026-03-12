@@ -1,4 +1,4 @@
-import { formatCliCommand } from "../cli/command-format.js";
+﻿import { formatCliCommand } from "../cli/command-format.js";
 import type {
   GatewayAuthChoice,
   OnboardMode,
@@ -30,17 +30,17 @@ async function requireRiskAcknowledgement(params: {
 
   await params.prompter.note(
     [
-      "Security warning — please read.",
+      "Security warning - please read.",
       "",
-      "WeiClaw Private is a minimal private edition built from OpenClaw. Expect sharp edges.",
+      "Vclaw is a private local-first runtime. Expect sharp edges while the surface is still being hardened.",
       "Default mode is Telegram-first, OpenAI-compatible-first, and intentionally relaxed for private self-use.",
       "This bot can read files and run actions if tools are enabled.",
       "A bad prompt can trick it into doing unsafe things.",
       "",
-      "WeiClaw is not a hostile multi-tenant boundary by default.",
+      "Vclaw is not a hostile multi-tenant boundary by default.",
       "If multiple users can message one tool-enabled agent, they share that delegated tool authority.",
       "",
-      "If you’re not comfortable with security hardening and access control, don’t run WeiClaw.",
+      "If you're not comfortable with security hardening and access control, don't run Vclaw yet.",
       "Ask someone experienced to help before enabling tools or exposing it to the internet.",
       "",
       "Recommended baseline:",
@@ -48,14 +48,14 @@ async function requireRiskAcknowledgement(params: {
       "- Multi-user/shared inbox: split trust boundaries (separate gateway/credentials, ideally separate OS users/hosts).",
       "- Sandbox + least-privilege tools.",
       "- Shared inboxes: isolate DM sessions (`session.dmScope: per-channel-peer`) and keep tool access minimal.",
-      "- Keep secrets out of the agent’s reachable filesystem.",
+      "- Keep secrets out of the agent's reachable filesystem.",
       "- Use the strongest available model for any bot with tools or untrusted inboxes.",
       "",
       "Run regularly:",
-      formatCliCommand("weiclaw security audit --deep"),
-      formatCliCommand("weiclaw security audit --fix"),
+      formatCliCommand("vclaw security audit --deep"),
+      formatCliCommand("vclaw security audit --fix"),
       "",
-      "Must read: https://docs.openclaw.ai/gateway/security",
+      "Must read: https://docs.vclaw.ai/gateway/security",
     ].join("\n"),
     "Security",
   );
@@ -77,7 +77,7 @@ export async function runOnboardingWizard(
 ) {
   const onboardHelpers = await import("../commands/onboard-helpers.js");
   onboardHelpers.printWizardHeader(runtime);
-  await prompter.intro("WeiClaw onboarding");
+  await prompter.intro("Vclaw onboarding");
   await requireRiskAcknowledgement({ opts, prompter });
 
   const snapshot = await readConfigFileSnapshot();
@@ -90,19 +90,19 @@ export async function runOnboardingWizard(
         [
           ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
           "",
-          "Docs: https://docs.openclaw.ai/gateway/configuration",
+          "Docs: https://docs.vclaw.ai/gateway/configuration",
         ].join("\n"),
         "Config issues",
       );
     }
     await prompter.outro(
-      `Config invalid. Run \`${formatCliCommand("weiclaw doctor")}\` to repair it, then re-run onboarding.`,
+      `Config invalid. Run \`${formatCliCommand("vclaw doctor")}\` to repair it, then re-run onboarding.`,
     );
     runtime.exit(1);
     return;
   }
 
-  const quickstartHint = `Telegram-first minimal setup. Configure details later via ${formatCliCommand("weiclaw configure")}.`;
+  const quickstartHint = `Telegram-first minimal setup. Configure details later via ${formatCliCommand("vclaw configure")}.`;
   const manualHint = "Configure port, network, Tailscale, and auth options.";
   const explicitFlowRaw = opts.flow?.trim();
   const normalizedExplicitFlow = explicitFlowRaw === "manual" ? "advanced" : explicitFlowRaw;
@@ -551,3 +551,4 @@ export async function runOnboardingWizard(
     return;
   }
 }
+

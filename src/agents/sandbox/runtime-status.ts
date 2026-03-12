@@ -131,7 +131,7 @@ export function formatSandboxToolPolicyBlockedMessage(params: {
     lines.push(`- Use main session key (direct): ${runtime.mainSessionKey}`);
   }
   lines.push(
-    `- See: ${formatCliCommand(`weiclaw sandbox explain --session ${runtime.sessionKey}`)}`,
+    `- See: ${formatCliCommand(`vclaw sandbox explain --session ${runtime.sessionKey}`)}`,
   );
 
   return lines.join("\n");

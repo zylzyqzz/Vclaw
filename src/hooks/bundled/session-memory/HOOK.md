@@ -1,12 +1,12 @@
----
+﻿---
 name: session-memory
 description: "Save session context to memory when /new or /reset command is issued"
-homepage: https://docs.openclaw.ai/automation/hooks#session-memory
+homepage: https://docs.vclaw.ai/automation/hooks#session-memory
 metadata:
   {
     "openclaw":
       {
-        "emoji": "💾",
+        "emoji": "馃捑",
         "events": ["command:new", "command:reset"],
         "requires": { "config": ["workspace.dir"] },
         "install": [{ "id": "bundled", "kind": "bundled", "label": "Bundled with OpenClaw" }],
@@ -107,3 +107,4 @@ Or remove it from your config:
   }
 }
 ```
+

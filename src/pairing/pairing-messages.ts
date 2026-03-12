@@ -8,13 +8,13 @@ export function buildPairingReply(params: {
 }): string {
   const { channel, idLine, code } = params;
   return [
-    "WeiClaw: access not configured.",
+    "Vclaw: access not configured.",
     "",
     idLine,
     "",
     `Pairing code: ${code}`,
     "",
     "Ask the bot owner to approve with:",
-    formatCliCommand(`weiclaw pairing approve ${channel} ${code}`),
+    formatCliCommand(`vclaw pairing approve ${channel} ${code}`),
   ].join("\n");
 }

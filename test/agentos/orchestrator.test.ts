@@ -31,10 +31,13 @@ describe("AgentOS run contract", () => {
       expect(result.routeSummary.length).toBeGreaterThan(0);
       expect(result.selectedRoles.length).toBeGreaterThan(0);
       expect(result.selectionReasons.length).toBeGreaterThan(0);
+      expect(result.executionMode).toBe("local-role-executor");
       expect(result.conclusion.length).toBeGreaterThan(0);
       expect(result.plan.length).toBeGreaterThan(0);
       expect(result.risks.length).toBeGreaterThan(0);
       expect(result.acceptance.length).toBeGreaterThan(0);
+      expect(result.roleExecutions.length).toBeGreaterThan(0);
+      expect(result.roleExecutions[0]?.prompt).toContain("Return Markdown with exactly these top-level sections");
     } finally {
       await storage.close();
       await rm(root, { recursive: true, force: true });

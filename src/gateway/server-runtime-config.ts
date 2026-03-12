@@ -111,7 +111,7 @@ export async function resolveGatewayRuntimeConfig(params: {
   const hasSharedSecret =
     (authMode === "token" && hasToken) || (authMode === "password" && hasPassword);
   const hooksConfig = resolveHooksConfig(params.cfg);
-  // WeiClaw defaults to UI-free runtime: canvas host is opt-in.
+  // Vclaw defaults to a UI-free runtime: canvas host is opt-in.
   const canvasHostEnabled =
     process.env.OPENCLAW_SKIP_CANVAS_HOST !== "1" && params.cfg.canvasHost?.enabled === true;
 

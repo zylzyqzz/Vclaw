@@ -1,4 +1,4 @@
-import { PassThrough } from "node:stream";
+﻿import { PassThrough } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LAUNCH_AGENT_THROTTLE_INTERVAL_SECONDS,
@@ -286,7 +286,7 @@ describe("launchd install", () => {
     }
     expect(message).toContain("logged-in macOS GUI session");
     expect(message).toContain("wrong user (including sudo)");
-    expect(message).toContain("https://docs.openclaw.ai/gateway");
+    expect(message).toContain("https://docs.vclaw.ai/gateway");
   });
 
   it("surfaces generic bootstrap failures without GUI-specific guidance", async () => {
@@ -345,3 +345,4 @@ describe("resolveLaunchAgentPlistPath", () => {
     expect(resolveLaunchAgentPlistPath(env)).toBe(expected);
   });
 });
+

@@ -101,6 +101,7 @@ vi.mock("../session-file-repair.js", () => ({
 
 vi.mock("../session-write-lock.js", () => ({
   acquireSessionWriteLock: vi.fn(async () => ({ release: vi.fn(async () => {}) })),
+  cleanStaleLockForSessionFile: vi.fn(async () => null),
   resolveSessionLockMaxHoldFromTimeout: vi.fn(() => 0),
 }));
 

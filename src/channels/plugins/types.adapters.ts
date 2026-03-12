@@ -1,4 +1,4 @@
-import type { ReplyPayload } from "../../auto-reply/types.js";
+﻿import type { ReplyPayload } from "../../auto-reply/types.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { GroupToolPolicyConfig } from "../../config/types.tools.js";
 import type { OutboundDeliveryResult, OutboundSendDeps } from "../../infra/outbound/deliver.js";
@@ -233,7 +233,7 @@ export type ChannelGatewayContext<ResolvedAccount = unknown> = {
    * - External plugins should check for undefined before using
    *
    * @since Plugin SDK 2026.2.19
-   * @see {@link https://docs.openclaw.ai/plugins/developing-plugins | Plugin SDK documentation}
+   * @see {@link https://docs.vclaw.ai/plugins/developing-plugins | Plugin SDK documentation}
    */
   channelRuntime?: PluginRuntime["channel"];
 };
@@ -381,3 +381,4 @@ export type ChannelSecurityAdapter<ResolvedAccount = unknown> = {
   ) => ChannelSecurityDmPolicy | null;
   collectWarnings?: (ctx: ChannelSecurityContext<ResolvedAccount>) => Promise<string[]> | string[];
 };
+

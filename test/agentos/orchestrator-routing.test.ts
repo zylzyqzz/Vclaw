@@ -37,6 +37,7 @@ describe("orchestrator route selection", () => {
       });
       expect(result.routeSummary).toContain("explicit");
       expect(result.selectedRoles).toEqual(["commander", "reviewer"]);
+      expect(result.roleExecutions.map((entry) => entry.roleId)).toEqual(["commander", "reviewer"]);
       expect(result.selectionReasons.join(" ")).toContain("explicit roles requested");
     } finally {
       await env.storage.close();
@@ -54,6 +55,7 @@ describe("orchestrator route selection", () => {
       });
       expect(result.routeSummary).toContain("preset route");
       expect(result.selectedRoles.length).toBeGreaterThan(0);
+      expect(result.executionMode).toBe("local-role-executor");
       expect(result.selectionReasons.join(" ")).toContain("priority: preset");
     } finally {
       await env.storage.close();
@@ -77,6 +79,7 @@ describe("orchestrator route selection", () => {
       expect(result.selectedRoles).not.toContain("builder");
       expect(result.selectedRoles).toContain("reviewer");
       expect(result.selectedRoles).toContain("planner");
+      expect(result.roleExecutions.length).toBe(result.selectedRoles.length);
       expect(result.selectionReasons.length).toBeGreaterThan(0);
       expect(result.selectionReasons.join(" ")).toContain("priority: dynamic route");
     } finally {

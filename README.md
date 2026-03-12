@@ -1,507 +1,332 @@
 # Vclaw
 
-Vclaw is a local-first multi-agent runtime with durable memory, structured CLI contracts, and a
-compatibility-preserving migration path from earlier OpenClaw and WeiClaw surfaces.
+Version: `2026.3.12`
 
-The goal of this repository is straightforward:
+Vclaw is a local-first multi-agent runtime with a Gateway control plane, an inspectable AgentOS
+runtime, layered memory, and a Vclaw-first CLI surface.
 
-- keep execution stable
-- keep multi-agent routing strong
-- keep long-lived memory complete and inspectable
-- keep skills and tool invocation smooth
-- move the user-facing experience to `Vclaw` without breaking working installs
+This repository is optimized for one thing first:
 
-## Start Here
+- make the system runnable on a single machine
+- keep execution and memory observable
+- keep multi-agent orchestration explicit
+- keep the operator surface honest
 
-If you are on Windows and want the closest thing to "one command, everything done", use:
+## What Vclaw Is
 
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
-```
+Vclaw is not a thin demo wrapper.
 
-What that command does:
+The repository includes:
 
-- checks `git`, Node.js 22+, Corepack, and `pnpm`
-- installs missing tools when supported installers are available
-- keeps `E:\Vclaw(Go语言未完成）` as the archived Go workspace if needed
-- syncs the repo into `E:\Vclaw`
-- runs `pnpm install`
-- creates `vclaw.cmd` and `agentos.cmd` wrappers in `%USERPROFILE%\.local\bin`
-- verifies installation with CLI smoke commands
+- a Gateway that exposes a long-lived runtime surface
+- an AgentOS runtime for role routing, session state, memory, and execution contracts
+- CLI entrypoints for task execution, chat, diagnostics, and memory inspection
+- a local workspace model for agent instructions and operator control
+- optional DeerFlow sidecar support for research-heavy tasks
 
-If you are on macOS or Linux and want the same one-command bootstrap flow, run this from the
-repository root:
+## Current Architecture
 
-```bash
-bash ./scripts/vclaw-bootstrap.sh
-```
+### 1. Gateway
 
-What that command does:
+The Gateway is the runtime-facing control plane.
 
-- checks `git`, Node.js 22+, Corepack, and `pnpm`
-- installs missing tools through `brew` or the detected Linux package manager when possible
-- keeps `~/Vclaw-go-unfinished` as the archive target if `~/Vclaw` is occupied by a non-repo folder
-- updates or clones the repo into `~/Vclaw`
-- runs `pnpm install`
-- creates `vclaw` and `agentos` wrappers in `~/.local/bin`
-- verifies installation with CLI smoke commands
+- one long-lived connection surface
+- WebSocket API, default port `18789`
+- supports multiple clients such as CLI, desktop apps, and web surfaces
 
-If you prefer the manual source-install path, do this:
+### 2. AgentOS Runtime
 
-1. Install Node 22 and `git`
-2. Enable `pnpm` through Corepack
-3. Clone the repository
-4. Run `pnpm install`
-5. Verify the CLI with `pnpm vclaw -- help`
-6. Run the AgentOS demo with `pnpm vclaw:agentos -- demo`
+Core AgentOS code lives in `src/agentos/`:
 
-The full copy-paste instructions are below.
+- `config/` - runtime configuration
+- `session/` - session lifecycle and state
+- `memory/` - short-term, long-term, and project/entity memory
+- `orchestrator/` - route selection and multi-role task flow
+- `runtime/` - bootstrap and runtime assembly
+- `execution/` - role execution pipeline
+- `storage/` - SQLite and file fallback
 
-## Installation
+### 3. Agent Workspace
 
-This README documents the safest installation path for most operators:
+Vclaw uses a single agent workspace with these control files:
 
-- use the Windows bootstrap script if you want machine setup and install in one command
-- run Vclaw directly from the source checkout
-- use repo-local `pnpm` commands first
-- verify the runtime before exploring packaging, deployment, or platform-specific flows
+- `AGENTS.md` - operating instructions and long-lived guidance
+- `SOUL.md` - role, tone, and behavioral boundary
+- `TOOLS.md` - tool usage rules
+- `BOOTSTRAP.md` - first-run bootstrap ritual, removed after completion
+- `IDENTITY.md` - name and style
+- `USER.md` - user-specific preferences
 
-This is the most reliable path because it always matches the exact code in your checkout.
+### 4. DeerFlow Sidecar
+
+DeerFlow is optional.
+
+- it is not bundled as a direct package dependency
+- it is used as an external sidecar for research-style tasks
+- AgentOS can call it when a task is explicitly research-heavy or when forced by flags
+
+## Project Layout
+
+The directories that matter most for day-to-day work are:
+
+- `src/cli/` - Vclaw and AgentOS CLI surfaces
+- `src/agentos/` - AgentOS runtime core
+- `src/commands/` - main Vclaw command implementations
+- `docs/` - architecture, roadmap, release, usage, and troubleshooting docs
+- `scripts/` - bootstrap, packaging, testing, and maintenance scripts
+- `test/agentos/` - AgentOS regression coverage
+
+## Install
 
 ### Recommended on Windows
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
+powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
 ```
 
-After it finishes successfully, you should be able to run:
+What the bootstrap does:
 
-```powershell
-vclaw --help
-agentos demo
-```
+- checks `git`, Node.js `22.12+`, Corepack, and `pnpm`
+- installs missing prerequisites when supported installers are available
+- archives an occupied `E:\Vclaw` folder to `E:\Vclaw-Go-unfinished` when needed
+- syncs the repo into `E:\Vclaw`
+- runs `pnpm install`
+- creates `vclaw.cmd` and `agentos.cmd` wrappers
+- runs smoke verification
+- prints the next commands you should run, including `vclaw onboard`
 
 ### Recommended on macOS and Linux
 
-Run from the repository root if you already have the source checkout:
-
 ```bash
-bash ./scripts/vclaw-bootstrap.sh
+curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
 ```
 
-The Unix bootstrap targets `~/Vclaw` by default. If that path already contains a non-repo folder,
-the script moves it aside to `~/Vclaw-go-unfinished` and then installs or updates the current
-Vclaw checkout.
+What the bootstrap does:
 
-After it finishes successfully, you should be able to run:
+- clones or updates `https://github.com/zylzyqzz/Vclaw.git` into `~/Vclaw`
+- installs missing prerequisites when the machine has a supported package manager
+- runs `pnpm install`
+- creates `vclaw` and `agentos` wrappers in `~/.local/bin`
+- appends the wrapper directory to shell startup files when needed
+- runs smoke verification and prints the next commands
 
-```bash
-vclaw --help
-agentos demo
-```
+### Wrapper locations after install
 
-### Step 1. Install prerequisites
+- Windows: `%USERPROFILE%\.local\bin`
+- macOS/Linux: `~/.local/bin`
 
-Required:
+Reopen the terminal after bootstrap if `vclaw` or `agentos` is not found on the first try.
 
-- Node.js `>= 22.12.0`
-- `git`
-
-Recommended:
-
-- PowerShell on Windows, or a standard shell on macOS/Linux
-- internet access for dependency installation
-
-Check what is already installed:
+## Manual Source Setup
 
 ```bash
 node -v
 git --version
-```
-
-If Node is missing or too old, install Node 22 first.
-
-Common install options:
-
-- Windows: [nodejs.org](https://nodejs.org/) or `winget install OpenJS.NodeJS.LTS`
-- macOS: [nodejs.org](https://nodejs.org/) or `brew install node`
-- Linux: Node 22 from your package manager, `fnm`, or `nvm`
-
-### Step 2. Enable pnpm
-
-This repository uses `pnpm@10.23.0`.
-
-Run:
-
-```bash
 corepack enable
 corepack prepare pnpm@10.23.0 --activate
-pnpm -v
-```
-
-If `pnpm -v` prints a version number, you are ready for the next step.
-
-### Step 3. Clone the repository
-
-```bash
 git clone https://github.com/zylzyqzz/Vclaw.git
 cd Vclaw
-```
-
-You should now be in the repository root, where `package.json` and `README.md` are visible.
-
-### Step 4. Install dependencies
-
-```bash
 pnpm install
-```
-
-What this does:
-
-- installs workspace dependencies
-- prepares the local CLI entrypoints
-- makes the repo-ready `pnpm vclaw ...` and `pnpm vclaw:agentos ...` commands available
-
-### Step 5. Verify the CLI boots
-
-Run both of these:
-
-```bash
 pnpm vclaw -- help
 pnpm vclaw:agentos -- help
 ```
 
-If both commands print help output, the local installation is working.
+Use the manual source path only if you intentionally want to work from a checkout. For normal installation, use the GitHub bootstrap scripts above.
 
-### Step 6. Run the first multi-agent demo
+## Configure
+
+### 1. Finish onboarding
+
+After bootstrap, run:
 
 ```bash
-pnpm vclaw:agentos -- demo
+vclaw onboard
 ```
 
-Expected outcome:
-
-- the command exits successfully
-- the output includes routing details such as `routeSummary:`
-- the built-in multi-agent demo path completes without startup errors
-
-### Step 7. Run a structured task
+If the wrapper command is not available yet, run it from the checkout:
 
 ```bash
-pnpm vclaw:agentos -- run --goal "generate release checklist" --preset default-demo --json
+cd ~/Vclaw
+pnpm vclaw -- onboard
 ```
 
-This confirms three important things at once:
+On Windows, the default checkout is `E:\Vclaw`.
 
-- orchestration is working
-- JSON output is working
-- the preserved task contract is working
+### 2. Create the runtime home
 
-### Step 8. Inspect memory
+Recommended paths:
 
-```bash
-pnpm vclaw:agentos -- inspect-memory --session demo-main --json
+- Windows config: `E:\Vclaw\.vclaw\vclaw.json`
+- macOS/Linux config: `~/.vclaw/vclaw.json`
+- workspace: `~/.vclaw/workspace` or `E:\Vclaw\.vclaw\workspace`
+
+### 3. Write a minimal config
+
+```json5
+{
+  gateway: {
+    port: 18789,
+    bind: "loopback",
+    auth: {
+      token: "replace-with-a-long-random-token"
+    }
+  },
+  agent: {
+    workspace: "~/.vclaw/workspace"
+  },
+  channels: {
+    whatsapp: {
+      allowFrom: ["+15555550123"]
+    }
+  }
+}
 ```
 
-This confirms the local memory system is active and inspectable.
+If you are on Windows, replace the workspace path with `E:\\Vclaw\\.vclaw\\workspace`.
 
-### One copy-paste setup block
-
-If you want the shortest fresh-machine setup flow, use this exact sequence:
+### 4. Start and verify
 
 ```bash
-node -v
-corepack enable
-corepack prepare pnpm@10.23.0 --activate
-git clone https://github.com/zylzyqzz/Vclaw.git
-cd Vclaw
-pnpm install
+vclaw --help
+agentos --help
+vclaw gateway status
+vclaw dashboard
+agentos demo --json
+```
+
+If wrapper commands are still unavailable, use the repo-local fallback:
+
+```bash
+cd ~/Vclaw
 pnpm vclaw -- help
-pnpm vclaw:agentos -- demo
-pnpm vclaw:agentos -- inspect-memory --session demo-main --json
+pnpm vclaw:agentos -- demo --json
 ```
 
-If you prefer the bootstrap route instead of the manual steps:
+On Windows, replace `~/Vclaw` with `E:\Vclaw`.
 
-```bash
-# macOS / Linux
-bash ./scripts/vclaw-bootstrap.sh
+## Quick Start
 
-# Windows
-powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
-```
-
-## First Commands To Know
-
-Use these repo-local commands first:
+### 1. Main CLI
 
 ```bash
 pnpm vclaw -- help
 pnpm vclaw status
-pnpm vclaw skills list
 pnpm vclaw doctor
-pnpm vclaw:agentos -- demo
-pnpm vclaw:agentos -- list-roles
-pnpm vclaw:agentos -- list-presets
-pnpm vclaw:agentos -- run --goal "assess release risk" --preset default-demo --json
-pnpm vclaw:agentos -- chat --preset default-demo
+```
+
+### 2. AgentOS Demo
+
+```bash
+pnpm vclaw:agentos -- demo --json
+```
+
+### 3. Run a Task
+
+```bash
+pnpm vclaw:agentos -- run --goal "generate a release checklist" --preset default-demo --json
+```
+
+### 4. Inspect Memory
+
+```bash
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
 ```
 
-Why the README uses `pnpm ...` commands instead of a global `vclaw` install:
-
-- it works immediately from a source checkout
-- it avoids a second installation step
-- it guarantees the command matches the checked-out code
-
-## Compatibility Entry Points
-
-Vclaw is the preferred brand and CLI surface, but compatibility remains in place.
-
-These entrypoints still work:
+### 5. Use a Real Vclaw Role Executor
 
 ```bash
-pnpm agentos -- demo
-pnpm openclaw -- help
-pnpm weiclaw -- help
+pnpm vclaw:agentos -- run --goal "implement release hardening" --executor vclaw --json
 ```
 
-What remains intentionally compatible today:
+If `--executor vclaw` cannot complete, AgentOS now falls back explicitly and records that fallback
+in the task result instead of pretending the role executed remotely.
 
-- published npm package name: `openclaw`
-- CLI aliases: `vclaw`, `agentos`, `openclaw`, `weiclaw`
-- selected legacy environment variables such as `OPENCLAW_*`
-- selected historical paths and app/service boundaries where hard renames would risk breakage
+## AgentOS Commands
 
-## Project Positioning
+Minimum core commands:
 
-Vclaw is designed for operators who want:
+- `run`
+- `chat`
+- `inspect-memory`
+- `list-roles`
+- `list-presets`
 
-- local-first execution instead of a cloud-only control plane
-- a strong multi-agent workflow instead of a single monolithic agent
-- inspectable memory instead of opaque hidden state
-- structured CLI and JSON output instead of ad hoc terminal text
-- stable skills and tool execution instead of fragile prompt-only behavior
+Useful examples:
 
-The current codebase preserves the foundations that matter:
+```bash
+pnpm vclaw:agentos -- list-roles --json
+pnpm vclaw:agentos -- list-presets --json
+pnpm vclaw:agentos -- chat --preset default-demo
+pnpm vclaw:agentos -- run --goal "assess release risk" --task-type review --json
+pnpm vclaw:agentos -- run --goal "research competitors" --task-type research --deerflow true --json
+```
 
-- task execution stability
-- multi-agent routing and presets
-- short-term, long-term, and project/entity memory
-- Gateway and node-host workflows
-- CLI and machine-readable JSON contracts
-- compatibility with legacy OpenClaw and WeiClaw surfaces where needed
+## Memory Model
 
-## Core Capabilities
-
-### Multi-agent orchestration
-
-The AgentOS surface ships with role-based orchestration and a demo route that uses:
-
-- `commander`
-- `planner`
-- `builder`
-- `reviewer`
-
-Structured task results follow the same contract across the orchestration flow:
-
-- `conclusion`
-- `plan`
-- `risks`
-- `acceptance`
-
-### Durable memory
-
-The runtime preserves three memory layers:
+AgentOS keeps three memory layers:
 
 - short-term session memory
 - long-term summarized memory
 - project/entity memory
 
-Memory is inspectable from the CLI rather than hidden behind an opaque service boundary.
+Storage strategy:
 
-### Gateway and tool surface
+- SQLite first
+- file fallback when SQLite cannot initialize
 
-The repository includes a broad runtime CLI and Gateway surface for:
+The runtime is local-first and inspectable, so memory is not hidden behind opaque services.
 
-- status and diagnostics
-- onboarding and configuration
-- skills
-- approvals
-- browser control
-- node management
-- channels and delivery flows
-- memory inspection
+## Current Runtime Truth
 
-### Local-first storage
+The Vclaw surface is now singular, but the runtime is still evolving.
 
-Storage remains local-first:
+What is already solid:
 
-- SQLite is preferred when available
-- file-based fallback is preserved for resilience
+- Vclaw-first CLI entrypoints
+- AgentOS storage, registry, and routing
+- layered memory persistence
+- session metadata and timeline capture
+- optional DeerFlow research augmentation
 
-## Memory Model
+What still needs further hardening:
 
-### Short-term session memory
+- deeper route evaluation
+- richer session replay ergonomics
+- broader memory recall and compaction policy
+- further cleanup of old internal naming in deep platform-specific code
 
-Used for active session context and recent task continuity.
+## Version Policy
 
-### Long-term summarized memory
+Vclaw now uses date-based versions for the primary product surface.
 
-Used for preserving durable summaries across repeated task execution.
+- current version: `2026.3.12`
+- rule: the version tracks the development date of the release surface
 
-### Project / entity memory
+This applies to:
 
-Used for higher-level facts and delivery state that should survive beyond a single request.
+- package version
+- AgentOS CLI version envelope
+- default AgentOS role/preset versions
+- top-level docs that describe the current system state
 
-## State And Compatibility Paths
+## Key Docs
 
-AgentOS now prefers:
-
-- `.vclaw`
-- `.vclaw-agentos.json`
-
-It still reads legacy compatibility state automatically:
-
-- `.weiclaw-agentos`
-- `.weiclaw-agentos.json`
-
-This lets fresh workspaces adopt Vclaw-first defaults without breaking older local state.
-
-## Repository Structure
-
-High-value areas in the repository:
-
-- `src/cli/`
-  CLI entrypoints, user-facing commands, help, onboarding, diagnostics
-- `src/commands/`
-  Runtime command logic, onboarding flows, status, doctor, auth, memory operations
-- `src/agentos/`
-  AgentOS config, registry, orchestrator, session, memory, runtime, storage
-- `src/agents/`
-  Agent definitions, routing logic, prompts, model behavior
-- `src/memory/`
-  Memory search, indexing, plugin integration, status formatting
-- `src/storage/`
-  Persistence abstractions and backing stores
 - `docs/architecture.md`
-  Architecture summary and compatibility strategy
 - `docs/roadmap.md`
-  Migration roadmap and acceptance standard
+- `docs/known-limitations.md`
+- `docs/release-checklist.md`
 
-## Development Workflow
+## Development Notes
 
-### Type check
-
-```bash
-pnpm exec tsc -p tsconfig.json --noEmit
-```
-
-### Focused regression checks
+Useful commands while working locally:
 
 ```bash
+pnpm build
+pnpm check
 pnpm exec vitest run test/agentos
-pnpm exec vitest run src/cli/completion-cli.defaults.test.ts src/cli/update-cli.test.ts src/cli/skills-cli.test.ts src/cli/program/help.test.ts src/cli/qr-cli.test.ts
+pnpm vclaw:agentos -- demo --json
 ```
 
-### Useful smoke commands
+## License
 
-```bash
-pnpm agentos -- help
-pnpm agentos -- demo --json
-pnpm vclaw:agentos -- inspect-memory --session demo-main --json
-pnpm vclaw -- help
-```
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Roadmap](docs/roadmap.md)
-- [Node setup details](docs/install/node.md)
-- [Getting started docs](docs/start/getting-started.md)
-
-## Troubleshooting
-
-### You want full machine bootstrap in one command
-
-Use:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
-```
-
-That is the Windows-first path that:
-
-- checks the environment
-- installs missing prerequisites
-- updates or clones the repo
-- installs dependencies
-- creates wrappers
-- runs smoke verification
-
-### `pnpm` is not recognized
-
-Run:
-
-```bash
-corepack enable
-corepack prepare pnpm@10.23.0 --activate
-pnpm -v
-```
-
-### Node version is too old
-
-Run:
-
-```bash
-node -v
-```
-
-If the version is lower than `22.12.0`, upgrade Node first, then rerun `pnpm install`.
-
-### You want the shortest path to a successful first run
-
-Use:
-
-```bash
-git clone https://github.com/zylzyqzz/Vclaw.git
-cd Vclaw
-corepack enable
-corepack prepare pnpm@10.23.0 --activate
-pnpm install
-pnpm vclaw:agentos -- demo
-```
-
-### You see legacy names such as `openclaw`
-
-That is expected. The repository is Vclaw-first at the user surface, but it still preserves
-compatibility in specific package names, aliases, and environment boundaries.
-
-### Help output shows old config warnings
-
-If this machine already had an older OpenClaw or WeiClaw setup, Vclaw may report compatibility
-warnings from existing local config under paths such as `~/.openclaw`.
-
-For a fresh installation check, the most reliable validation is:
-
-- clone the repository into a clean directory
-- run `pnpm install`
-- run `pnpm vclaw:agentos -- demo`
-
-Fresh checkouts without older local state should be much easier to reason about.
-
-## Current Acceptance Standard
-
-The Vclaw migration is only acceptable if these remain true:
-
-- task execution stays stable
-- multi-agent routing stays strong
-- skills continue to load and execute cleanly
-- memory stays complete and inspectable
-- user-facing CLI surfaces feel like Vclaw, not a half-renamed fork
-
-## Notes For Operators
-
-- If you are starting fresh, prefer `vclaw` and `pnpm vclaw:agentos -- ...`
-- If you already depend on `openclaw`, `weiclaw`, or `OPENCLAW_*`, those compatibility paths are still preserved
-- If you are validating the migration, use both smoke commands and JSON-mode checks rather than relying only on help text
+MIT

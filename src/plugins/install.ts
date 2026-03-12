@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { fileExists, readJsonFile, resolveArchiveKind } from "../infra/archive.js";
 import { writeFileFromPathWithinRoot } from "../infra/fs-safe.js";
@@ -46,7 +46,7 @@ type PackageManifest = PluginPackageManifest & {
 };
 
 const MISSING_EXTENSIONS_ERROR =
-  'package.json missing openclaw.extensions; update the plugin package to include openclaw.extensions (for example ["./dist/index.js"]). See https://docs.openclaw.ai/help/troubleshooting#plugin-install-fails-with-missing-openclaw-extensions';
+  'package.json missing openclaw.extensions; update the plugin package to include openclaw.extensions (for example ["./dist/index.js"]). See https://docs.vclaw.ai/help/troubleshooting#plugin-install-fails-with-missing-openclaw-extensions';
 
 export const PLUGIN_INSTALL_ERROR_CODE = {
   INVALID_NPM_SPEC: "invalid_npm_spec",
@@ -348,7 +348,7 @@ async function installPluginFromPackageDir(
     logger,
     copyErrorPrefix: "failed to copy plugin",
     hasDeps,
-    depsLogMessage: "Installing plugin dependencies…",
+    depsLogMessage: "Installing plugin dependencies...",
     afterCopy: async () => {
       for (const entry of extensions) {
         const resolvedEntry = path.resolve(targetDir, entry);
@@ -470,7 +470,7 @@ export async function installPluginFromFile(params: {
     return buildFileInstallResult(pluginId, targetFile);
   }
 
-  logger.info?.(`Installing to ${targetFile}…`);
+  logger.info?.(`Installing to ${targetFile}...`);
   try {
     await writeFileFromPathWithinRoot({
       rootDir: extensionsDir,
@@ -507,7 +507,7 @@ export async function installPluginFromNpmSpec(params: {
     };
   }
 
-  logger.info?.(`Downloading ${spec}…`);
+  logger.info?.(`Downloading ${spec}...`);
   const flowResult = await installFromNpmSpecArchiveWithInstaller({
     tempDirPrefix: "openclaw-npm-pack-",
     spec,
@@ -570,3 +570,4 @@ export async function installPluginFromPath(
     ...pickFileInstallCommonParams(params),
   });
 }
+

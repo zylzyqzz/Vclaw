@@ -1,16 +1,18 @@
 # Vclaw Architecture
 
+Version: `2026.3.12`
+
 ## Overview
 
-Vclaw is a local-first runtime with a Vclaw-first user surface and a compatibility-aware core.
-The repo still keeps important internal module paths and runtime contracts stable where renaming
-them would risk breaking existing systems.
+Vclaw is a local-first runtime with a Vclaw-first user surface, a Gateway-centric control plane,
+and an AgentOS runtime that stays inspectable from the filesystem and CLI.
 
 In practice:
 
 - the visible brand is `Vclaw`
-- the CLI is moving to `vclaw` examples and help text
-- compatibility aliases and internal legacy paths remain where needed
+- the primary CLI entry is `vclaw`
+- the AgentOS entry is `agentos`
+- the repo defaults to Vclaw-native paths and config files
 
 ## Core Runtime Areas
 
@@ -19,7 +21,7 @@ In practice:
 Primary user entrypoints live in:
 
 - `src/cli/`
-- `openclaw.mjs`
+- `vclaw.mjs`
 - `scripts/run-node.mjs`
 
 The CLI surface handles:
@@ -93,36 +95,18 @@ The runtime preserves three memory layers:
 Session state and transcripts remain observable and debuggable through CLI inspection commands
 instead of hidden behind opaque services.
 
-## Compatibility Strategy
+## Runtime Paths
 
-The migration deliberately separates visible branding from risky internals.
-
-Safe to change first:
-
-- help text
-- docs
-- onboarding language
-- banner and tagline text
-- example commands
-
-Preserved for stability:
-
-- legacy env vars such as `OPENCLAW_*`
-- package name and compatibility exports
-- legacy runtime module names where external code may depend on them
-
-AgentOS-specific compatibility already prefers:
+The Vclaw runtime uses Vclaw-native paths by default:
 
 - `.vclaw`
 - `.vclaw-agentos.json`
 
-while still reading:
-
-- `.weiclaw-agentos`
-- `.weiclaw-agentos.json`
-
 ## Design Principle
 
-The repo is not trying to win by a risky rename.
-It wins by keeping execution, skills, memory, and orchestration stable while progressively
-replacing old brand surfaces with `Vclaw`.
+The product should feel singular:
+
+- one visible brand
+- one primary CLI
+- one documented local-first path
+- one inspectable AgentOS runtime

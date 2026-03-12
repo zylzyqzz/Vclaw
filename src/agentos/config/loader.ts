@@ -4,7 +4,6 @@ import { defaultDemoPresets } from "../runtime/defaults.js";
 import type { DeerFlowExecutionMode, OrchestratorConfig } from "../types.js";
 
 export const PREFERRED_AGENTOS_DATA_DIR = ".vclaw";
-export const LEGACY_AGENTOS_DATA_DIR = ".weiclaw-agentos";
 
 interface DeerFlowRuntimeState {
   enabled?: boolean;
@@ -122,17 +121,7 @@ function resolveDeerFlowMode(runtime?: DeerFlowRuntimeState): DeerFlowExecutionM
 }
 
 export function resolveAgentOsDataDir(cwd = process.cwd()): string {
-  const preferred = path.join(cwd, PREFERRED_AGENTOS_DATA_DIR);
-  if (existsSync(preferred)) {
-    return preferred;
-  }
-
-  const legacy = path.join(cwd, LEGACY_AGENTOS_DATA_DIR);
-  if (existsSync(legacy)) {
-    return legacy;
-  }
-
-  return preferred;
+  return path.join(cwd, PREFERRED_AGENTOS_DATA_DIR);
 }
 
 export function defaultOrchestratorConfig(cwd = process.cwd()): OrchestratorConfig {

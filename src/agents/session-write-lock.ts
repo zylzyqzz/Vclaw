@@ -384,6 +384,88 @@ function shouldTreatAsOrphanSelfLock(params: {
   return !HELD_LOCKS.has(params.normalizedSessionFile);
 }
 
+async function resolveNormalizedSessionLockPaths(sessionFile: string): Promise<{
+  sessionFile: string;
+  normalizedSessionFile: string;
+  lockPath: string;
+}> {
+  const resolvedSessionFile = path.resolve(sessionFile);
+  const sessionDir = path.dirname(resolvedSessionFile);
+  await fs.mkdir(sessionDir, { recursive: true });
+  let normalizedDir = sessionDir;
+  try {
+    normalizedDir = await fs.realpath(sessionDir);
+  } catch {
+    // Fall back to the resolved path if realpath fails (permissions, transient FS).
+  }
+  const normalizedSessionFile = path.join(normalizedDir, path.basename(resolvedSessionFile));
+  return {
+    sessionFile: resolvedSessionFile,
+    normalizedSessionFile,
+    lockPath: `${normalizedSessionFile}.lock`,
+  };
+}
+
+export async function cleanStaleLockForSessionFile(params: {
+  sessionFile: string;
+  staleMs?: number;
+  removeStale?: boolean;
+  nowMs?: number;
+  log?: {
+    warn?: (message: string) => void;
+    info?: (message: string) => void;
+  };
+}): Promise<SessionLockInspection | null> {
+  const staleMs = resolvePositiveMs(params.staleMs, DEFAULT_STALE_MS);
+  const removeStale = params.removeStale !== false;
+  const nowMs = params.nowMs ?? Date.now();
+  const { normalizedSessionFile, lockPath } = await resolveNormalizedSessionLockPaths(
+    params.sessionFile,
+  );
+
+  try {
+    await fs.access(lockPath);
+  } catch (error) {
+    const code = (error as { code?: string } | null)?.code;
+    if (code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+
+  const payload = await readLockPayload(lockPath);
+  const inspected = inspectLockPayload(payload, staleMs, nowMs);
+  const orphanSelfLock = shouldTreatAsOrphanSelfLock({
+    payload,
+    normalizedSessionFile,
+  });
+  const reclaimDetails = orphanSelfLock
+    ? {
+        ...inspected,
+        stale: true,
+        staleReasons: inspected.staleReasons.includes("orphan-self-pid")
+          ? inspected.staleReasons
+          : [...inspected.staleReasons, "orphan-self-pid"],
+      }
+    : inspected;
+  const removable = await shouldReclaimContendedLockFile(lockPath, reclaimDetails, staleMs, nowMs);
+  const lockInfo: SessionLockInspection = {
+    lockPath,
+    ...reclaimDetails,
+    removed: false,
+  };
+
+  if (removeStale && removable) {
+    await fs.rm(lockPath, { force: true });
+    lockInfo.removed = true;
+    params.log?.warn?.(
+      `removed stale session lock: ${lockPath} (${lockInfo.staleReasons.join(", ") || "unknown"})`,
+    );
+  }
+
+  return lockInfo;
+}
+
 export async function cleanStaleLockFiles(params: {
   sessionsDir: string;
   staleMs?: number;
@@ -454,17 +536,9 @@ export async function acquireSessionWriteLock(params: {
   const timeoutMs = resolvePositiveMs(params.timeoutMs, 10_000, { allowInfinity: true });
   const staleMs = resolvePositiveMs(params.staleMs, DEFAULT_STALE_MS);
   const maxHoldMs = resolvePositiveMs(params.maxHoldMs, DEFAULT_MAX_HOLD_MS);
-  const sessionFile = path.resolve(params.sessionFile);
-  const sessionDir = path.dirname(sessionFile);
-  await fs.mkdir(sessionDir, { recursive: true });
-  let normalizedDir = sessionDir;
-  try {
-    normalizedDir = await fs.realpath(sessionDir);
-  } catch {
-    // Fall back to the resolved path if realpath fails (permissions, transient FS).
-  }
-  const normalizedSessionFile = path.join(normalizedDir, path.basename(sessionFile));
-  const lockPath = `${normalizedSessionFile}.lock`;
+  const { sessionFile, normalizedSessionFile, lockPath } = await resolveNormalizedSessionLockPaths(
+    params.sessionFile,
+  );
 
   const allowReentrant = params.allowReentrant ?? true;
   const held = HELD_LOCKS.get(normalizedSessionFile);

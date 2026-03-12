@@ -74,14 +74,14 @@ function Test-VclawCheckout {
     return $false
   }
 
-  return (
-    (Test-Path (Join-Path $Path ".git")) -or
-    (
-      (Test-Path (Join-Path $Path "package.json")) -and
-      (Test-Path (Join-Path $Path "openclaw.mjs")) -and
-      (Test-Path (Join-Path $Path "scripts\run-node.mjs"))
-    )
-  )
+      return (
+        (Test-Path (Join-Path $Path ".git")) -or
+        (
+          (Test-Path (Join-Path $Path "package.json")) -and
+          (Test-Path (Join-Path $Path "vclaw.mjs")) -and
+          (Test-Path (Join-Path $Path "scripts\run-node.mjs"))
+        )
+      )
 }
 
 function Test-DeerFlowCheckout {
@@ -529,6 +529,7 @@ function Ensure-Wrappers {
   }
 
   $vclawWrapper = Join-Path $script:WrapperDir "vclaw.cmd"
+  $openclawWrapper = Join-Path $script:WrapperDir "openclaw.cmd"
   $agentosWrapper = Join-Path $script:WrapperDir "agentos.cmd"
 
   $vclawContent = @"
@@ -551,7 +552,18 @@ popd >nul
 exit /b %EXITCODE%
 "@
 
+  $openclawContent = @"
+@echo off
+setlocal
+pushd "$script:TargetDir" >nul
+node openclaw.mjs %*
+set "EXITCODE=%ERRORLEVEL%"
+popd >nul
+exit /b %EXITCODE%
+"@
+
   Write-CmdWrapper -Path $vclawWrapper -Content $vclawContent
+  Write-CmdWrapper -Path $openclawWrapper -Content $openclawContent
   Write-CmdWrapper -Path $agentosWrapper -Content $agentosContent
   Ensure-WrapperDirOnPath
 }

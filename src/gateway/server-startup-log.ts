@@ -38,7 +38,7 @@ export function logGatewayStartup(params: {
   if (enabledDangerousFlags.length > 0) {
     const warning =
       `security warning: dangerous config flags enabled: ${enabledDangerousFlags.join(", ")}. ` +
-      "Run `weiclaw security audit`.";
+      "Run `vclaw security audit`.";
     params.log.warn(warning);
   }
 }

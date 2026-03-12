@@ -7,6 +7,7 @@ import { readRoleBundleJson, writeRoleBundleJson } from "../agentos/registry/rol
 import { validatePreset, validateRoleBundle } from "../agentos/registry/role-validation.js";
 import { createAgentOsRuntime } from "../agentos/runtime/create-runtime.js";
 import { runVclawTask } from "../agentos/integration/vclaw-bridge.js";
+import { VCLAW_DATE_VERSION } from "../agentos/version.js";
 import type {
   AgentCapability,
   AgentMemoryScope,
@@ -15,6 +16,7 @@ import type {
   DeerFlowRequestOptions,
   LintResult,
   PresetDefinition,
+  RoleExecutionOptions,
   RoleBundle,
   RoleTemplate,
   RuntimeAgent,
@@ -23,7 +25,7 @@ import type {
 const rawArgv = process.argv.slice(2).filter((arg, index) => !(index === 0 && arg === "--"));
 const jsonMode = rawArgv.includes("--json");
 const argv = rawArgv.filter((arg) => arg !== "--json");
-const AGENTOS_CLI_VERSION = "2.1.0-rc.1";
+const AGENTOS_CLI_VERSION = VCLAW_DATE_VERSION;
 
 const nativeEmitWarning = process.emitWarning.bind(process);
 process.emitWarning = ((warning: unknown, ...rest: unknown[]) => {
@@ -250,6 +252,26 @@ function buildDeerFlowOptionsFromArgs(): DeerFlowRequestOptions | undefined {
   };
 }
 
+function buildRoleExecutionOptionsFromArgs(): RoleExecutionOptions | undefined {
+  const mode = getArg("executor") as RoleExecutionOptions["mode"] | undefined;
+  const allowWrite = getArg("allow-write");
+  const vclawBin = getArg("vclaw-bin");
+  const vclawConfig = getArg("vclaw-config");
+  const timeoutMs = getArg("timeout-ms");
+
+  if (!mode && !allowWrite && !vclawBin && !vclawConfig && !timeoutMs) {
+    return undefined;
+  }
+
+  return {
+    mode,
+    allowWrite: allowWrite ? allowWrite === "true" : undefined,
+    vclawBin,
+    vclawConfig,
+    timeoutMs: timeoutMs ? Number(timeoutMs) : undefined,
+  };
+}
+
 function buildRoleTemplate(roleId: string): RoleTemplate {
   const ts = nowIso();
   const capabilities = getCsv("capabilities") as AgentCapability[];
@@ -267,7 +289,7 @@ function buildRoleTemplate(roleId: string): RoleTemplate {
     policy: buildPolicy(true),
     memoryScope: buildMemoryScope(),
     enabled: parseBool("template-enabled", true),
-    version: getArg("version") ?? "1.0.0",
+    version: getArg("version") ?? VCLAW_DATE_VERSION,
     tags: getCsv("tags"),
     createdAt: ts,
     updatedAt: ts,
@@ -323,7 +345,7 @@ function buildPresetFromArgs(presetId: string, previous?: PresetDefinition): Pre
       getCsv("task-types").length > 0 ? getCsv("task-types") : (previous?.taskTypes ?? ["general"]),
     tags: getCsv("tags").length > 0 ? getCsv("tags") : (previous?.tags ?? []),
     enabled: parseBool("enabled", previous?.enabled ?? true),
-    version: getArg("version") ?? previous?.version ?? "1.0.0",
+    version: getArg("version") ?? previous?.version ?? VCLAW_DATE_VERSION,
     createdAt: previous?.createdAt ?? ts,
     updatedAt: ts,
   };
@@ -349,6 +371,7 @@ async function runCommand() {
       preferredRoles: getCsv("preferred-roles"),
       excludedRoles: getCsv("excluded-roles"),
       deerflow: buildDeerFlowOptionsFromArgs(),
+      roleExecution: buildRoleExecutionOptionsFromArgs(),
     });
     emitSuccess(
       {
@@ -364,6 +387,7 @@ async function runCommand() {
       () => {
         console.log(`routeSummary: ${result.routeSummary}`);
         console.log(`selectedRoles: ${result.selectedRoles.join(", ")}`);
+        console.log(`executionMode: ${result.executionMode}`);
         console.log(`selectionReasons: ${result.selectionReasons.join(" | ")}`);
         console.log(`conclusion: ${result.conclusion}`);
         console.log(`plan[0]: ${result.plan[0] ?? "n/a"}`);
@@ -397,9 +421,11 @@ async function chatCommand() {
         roles: roleList.length > 0 ? roleList : undefined,
         preset,
         deerflow: buildDeerFlowOptionsFromArgs(),
+        roleExecution: buildRoleExecutionOptionsFromArgs(),
       });
       console.log(`routeSummary: ${result.routeSummary}`);
       console.log(`selectedRoles: ${result.selectedRoles.join(",")}`);
+      console.log(`executionMode: ${result.executionMode}`);
       console.log(`selectionReasons: ${result.selectionReasons.join(" | ")}`);
       console.log(`conclusion: ${result.conclusion}`);
     }
@@ -464,6 +490,7 @@ async function demoCommand() {
       preset,
       taskType: "review",
       deerflow: buildDeerFlowOptionsFromArgs(),
+      roleExecution: buildRoleExecutionOptionsFromArgs(),
     });
     emitSuccess(
       {
@@ -481,6 +508,7 @@ async function demoCommand() {
         console.log(`goal: ${goal}`);
         console.log(`routeSummary: ${result.routeSummary}`);
         console.log(`selectedRoles: ${result.selectedRoles.join(", ")}`);
+        console.log(`executionMode: ${result.executionMode}`);
         console.log(`selectionReasons: ${result.selectionReasons.join(" | ")}`);
         console.log(`conclusion: ${result.conclusion}`);
         console.log(`plan[0]: ${result.plan[0] ?? "n/a"}`);
@@ -1097,6 +1125,8 @@ async function main() {
   if (!command || command === "help" || command === "--help" || command === "-h") {
     console.log(
       [
+        `Vclaw AgentOS ${AGENTOS_CLI_VERSION}`,
+        "",
         "Usage: node --import tsx src/cli/agentos.ts <command> [options] [--json]",
         "Preferred wrapper: pnpm vclaw:agentos -- <command> [options] [--json]",
         "Compatibility wrapper: pnpm agentos -- <command> [options] [--json]",
@@ -1110,9 +1140,10 @@ async function main() {
         "Commands:",
         "  demo [--goal <text>] [--preset <id>] [--session <id>]",
         "  run --goal <text> [--roles a,b] [--preset <id>] [--required-capabilities a,b] [--preferred-roles a,b] [--excluded-roles a,b]",
+        "      [--executor local|vclaw|auto] [--allow-write true|false] [--vclaw-bin <path>] [--vclaw-config <path>] [--timeout-ms <number>]",
         "      [--deerflow true|false] [--deerflow-force] [--deerflow-mode flash|standard|pro|ultra]",
         "      [--deerflow-backend <path>] [--deerflow-config <path>] [--deerflow-python <bin>] [--deerflow-model <name>]",
-        "  chat [--roles a,b] [--preset <id>]",
+        "  chat [--roles a,b] [--preset <id>] [--executor local|vclaw|auto]",
         "  list-roles",
         "  list-agents (compat alias)",
         "  inspect-role --id <roleId>",
@@ -1141,6 +1172,7 @@ async function main() {
         "Examples:",
         "  pnpm vclaw:agentos -- demo --json",
         "  pnpm vclaw:agentos -- run --goal \"assess release risk\" --preset default-demo",
+        "  pnpm vclaw:agentos -- run --goal \"implement release hardening\" --executor vclaw --json",
         "  pnpm vclaw:agentos -- run --goal \"investigate issue\" --task-type research --required-capabilities research,review --preset \"\" --json",
         "  pnpm vclaw:agentos -- run --goal \"produce a competitive report\" --task-type research --deerflow true --deerflow-mode ultra --json",
         "  pnpm vclaw:agentos -- inspect-memory --session demo-main --json",

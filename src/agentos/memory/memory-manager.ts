@@ -1,5 +1,5 @@
 import type { AgentOsStorage } from "../storage/storage.js";
-import type { DeerFlowBridgeResponse, MemoryLayer, MemoryRecord } from "../types.js";
+import type { MemoryLayer, MemoryRecord, TaskRequest, TaskResult } from "../types.js";
 
 export class MemoryManager {
   constructor(private readonly storage: AgentOsStorage) {}
@@ -22,46 +22,91 @@ export class MemoryManager {
     });
   }
 
-  async captureRun(
-    sessionId: string,
-    goal: string,
-    conclusion: string,
-    taskId: string,
-    deerflow?: DeerFlowBridgeResponse,
-  ): Promise<void> {
-    await this.write(sessionId, "short-term", `session:${sessionId}`, goal, taskId);
-    await this.write(sessionId, "long-term", "long-term:summary", conclusion, taskId, conclusion);
+  async captureRun(request: TaskRequest, result: TaskResult): Promise<void> {
     await this.write(
-      sessionId,
+      request.sessionId,
+      "short-term",
+      `session:${request.sessionId}:goal`,
+      request.goal,
+      result.requestId,
+    );
+    await this.write(
+      request.sessionId,
+      "short-term",
+      `session:${request.sessionId}:route`,
+      JSON.stringify(
+        {
+          routeSummary: result.routeSummary,
+          selectedRoles: result.selectedRoles,
+          selectionReasons: result.selectionReasons,
+          executionMode: result.executionMode,
+        },
+        null,
+        2,
+      ),
+      result.requestId,
+      result.routeSummary,
+    );
+    await this.write(
+      request.sessionId,
+      "long-term",
+      "long-term:summary",
+      result.conclusion,
+      result.requestId,
+      result.conclusion,
+    );
+    await this.write(
+      request.sessionId,
       "project-entity",
       "entity:delivery",
-      `Task ${taskId} completed with conclusion: ${conclusion}`,
-      taskId,
+      JSON.stringify(
+        {
+          requestId: result.requestId,
+          goal: request.goal,
+          conclusion: result.conclusion,
+          selectedRoles: result.selectedRoles,
+          executionMode: result.executionMode,
+        },
+        null,
+        2,
+      ),
+      result.requestId,
+      result.conclusion,
     );
-    if (deerflow?.ok) {
+    for (const execution of result.roleExecutions) {
       await this.write(
-        sessionId,
+        request.sessionId,
+        "short-term",
+        `session:${request.sessionId}:role:${execution.roleId}`,
+        execution.output,
+        result.requestId,
+        execution.conclusion,
+      );
+    }
+    if (result.deerflow?.ok) {
+      await this.write(
+        request.sessionId,
         "long-term",
         "long-term:deerflow",
-        deerflow.summary,
-        taskId,
-        deerflow.summary,
+        result.deerflow.summary,
+        result.requestId,
+        result.deerflow.summary,
       );
-      if (deerflow.sources.length > 0 || deerflow.artifacts.length > 0) {
+      if (result.deerflow.sources.length > 0 || result.deerflow.artifacts.length > 0) {
         await this.write(
-          sessionId,
+          request.sessionId,
           "project-entity",
           "entity:research",
           JSON.stringify(
             {
-              sources: deerflow.sources,
-              artifacts: deerflow.artifacts,
+              sources: result.deerflow.sources,
+              artifacts: result.deerflow.artifacts,
             },
             null,
             2,
           ),
-          taskId,
-          deerflow.summary,
+          result.requestId,
+          result.deerflow.summary,
         );
       }
     }

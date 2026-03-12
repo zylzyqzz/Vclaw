@@ -1,5 +1,5 @@
 ---
-summary: "Get OpenClaw installed and run your first chat in minutes."
+summary: "Get Vclaw installed and run your first chat in minutes."
 read_when:
   - First time setup from zero
   - You want the fastest path to a working chat
@@ -11,11 +11,15 @@ title: "Getting Started"
 Goal: go from zero to a first working chat with minimal setup.
 
 <Info>
-Fastest chat: open the Control UI (no channel setup needed). Run `openclaw dashboard`
+Fastest chat: open the Control UI (no channel setup needed). Run `pnpm vclaw -- dashboard`
 and chat in the browser, or open `http://127.0.0.1:18789/` on the
-<Tooltip headline="Gateway host" tip="The machine running the OpenClaw gateway service.">gateway host</Tooltip>.
+<Tooltip headline="Gateway host" tip="The machine running the Vclaw gateway service.">gateway host</Tooltip>.
 Docs: [Dashboard](/web/dashboard) and [Control UI](/web/control-ui).
 </Info>
+
+<Note>
+Current documented workspace release: <strong>2026.3.12</strong>
+</Note>
 
 ## Prereqs
 
@@ -28,11 +32,11 @@ Check your Node version with `node --version` if you are unsure.
 ## Quick setup (CLI)
 
 <Steps>
-  <Step title="Install OpenClaw (recommended)">
+  <Step title="Run the GitHub bootstrap script">
     <Tabs>
       <Tab title="macOS/Linux">
         ```bash
-        curl -fsSL https://openclaw.ai/install.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
         ```
         <img
   src="/assets/install-script.svg"
@@ -42,36 +46,54 @@ Check your Node version with `node --version` if you are unsure.
       </Tab>
       <Tab title="Windows (PowerShell)">
         ```powershell
-        iwr -useb https://openclaw.ai/install.ps1 | iex
+        powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
         ```
       </Tab>
     </Tabs>
 
     <Note>
-    Other install methods and requirements: [Install](/install).
+    The bootstrap clones the repo from GitHub, installs prerequisites, creates wrappers, and prints the next commands.
     </Note>
 
   </Step>
   <Step title="Run the onboarding wizard">
     ```bash
-    openclaw onboard --install-daemon
+    vclaw onboard
     ```
 
     The wizard configures auth, gateway settings, and optional channels.
     See [Onboarding Wizard](/start/wizard) for details.
 
   </Step>
+  <Step title="Create a minimal config">
+    Use `~/.vclaw/vclaw.json` on macOS/Linux or `E:\Vclaw\.vclaw\vclaw.json` on Windows.
+
+    ```json5
+    {
+      gateway: {
+        port: 18789,
+        bind: "loopback",
+        auth: {
+          token: "replace-with-a-long-random-token"
+        }
+      },
+      agent: {
+        workspace: "~/.vclaw/workspace"
+      }
+    }
+    ```
+  </Step>
   <Step title="Check the Gateway">
     If you installed the service, it should already be running:
 
     ```bash
-    openclaw gateway status
+    vclaw gateway status
     ```
 
   </Step>
   <Step title="Open the Control UI">
     ```bash
-    openclaw dashboard
+    vclaw dashboard
     ```
   </Step>
 </Steps>
@@ -87,7 +109,7 @@ If the Control UI loads, your Gateway is ready for use.
     Useful for quick tests or troubleshooting.
 
     ```bash
-    openclaw gateway --port 18789
+    vclaw gateway --port 18789
     ```
 
   </Accordion>
@@ -95,19 +117,30 @@ If the Control UI loads, your Gateway is ready for use.
     Requires a configured channel.
 
     ```bash
-    openclaw message send --target +15555550123 --message "Hello from OpenClaw"
+    vclaw message send --target +15555550123 --message "Hello from Vclaw"
     ```
+
+  </Accordion>
+  <Accordion title="Wrapper command not found">
+    If your shell has not reloaded the wrapper path yet, use the repo-local fallback.
+
+    ```bash
+    cd ~/Vclaw
+    pnpm vclaw -- help
+    ```
+
+    On Windows, use `cd E:\Vclaw` instead.
 
   </Accordion>
 </AccordionGroup>
 
 ## Useful environment variables
 
-If you run OpenClaw as a service account or want custom config/state locations:
+If you run Vclaw as a service account or want custom config/state locations:
 
-- `OPENCLAW_HOME` sets the home directory used for internal path resolution.
-- `OPENCLAW_STATE_DIR` overrides the state directory.
-- `OPENCLAW_CONFIG_PATH` overrides the config file path.
+- keep config, workspace, and memory under one runtime home
+- use explicit config and state locations for isolated installs
+- prefer one Gateway per machine until you intentionally need isolation
 
 Full environment variable reference: [Environment vars](/help/environment).
 

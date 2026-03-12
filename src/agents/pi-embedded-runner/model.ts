@@ -1,4 +1,4 @@
-import type { Api, Model } from "@mariozechner/pi-ai";
+﻿import type { Api, Model } from "@mariozechner/pi-ai";
 import type { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { ModelDefinitionConfig } from "../../config/types.js";
@@ -219,7 +219,7 @@ export function resolveModel(
  * Build a more helpful error when the model is not found.
  *
  * Local providers (ollama, vllm) need a dummy API key to be registered.
- * Users often configure `agents.defaults.model.primary: "ollama/…"` but
+ * Users often configure `agents.defaults.model.primary: "ollama/鈥?` but
  * forget to set `OLLAMA_API_KEY`, resulting in a confusing "Unknown model"
  * error.  This detects known providers that require opt-in auth and adds
  * a hint.
@@ -230,11 +230,11 @@ const LOCAL_PROVIDER_HINTS: Record<string, string> = {
   ollama:
     "Ollama requires authentication to be registered as a provider. " +
     'Set OLLAMA_API_KEY="ollama-local" (any value works) or run "openclaw configure". ' +
-    "See: https://docs.openclaw.ai/providers/ollama",
+    "See: https://docs.vclaw.ai/providers/ollama",
   vllm:
     "vLLM requires authentication to be registered as a provider. " +
     'Set VLLM_API_KEY (any value works) or run "openclaw configure". ' +
-    "See: https://docs.openclaw.ai/providers/vllm",
+    "See: https://docs.vclaw.ai/providers/vllm",
 };
 
 function buildUnknownModelError(provider: string, modelId: string): string {
@@ -242,3 +242,4 @@ function buildUnknownModelError(provider: string, modelId: string): string {
   const hint = LOCAL_PROVIDER_HINTS[provider.toLowerCase()];
   return hint ? `${base}. ${hint}` : base;
 }
+

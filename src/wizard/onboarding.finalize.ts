@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+﻿import fs from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../agents/workspace.js";
 import { formatCliCommand } from "../cli/command-format.js";
@@ -138,7 +138,7 @@ export async function finalizeOnboardingWizard(
           "Gateway service",
           { doneMessage: "Gateway service restarted." },
           async (progress) => {
-            progress.update("Restarting Gateway service…");
+            progress.update("Restarting Gateway service...");
             await service.restart({
               env: process.env,
               stdout: process.stdout,
@@ -150,7 +150,7 @@ export async function finalizeOnboardingWizard(
           "Gateway service",
           { doneMessage: "Gateway service uninstalled." },
           async (progress) => {
-            progress.update("Uninstalling Gateway service…");
+            progress.update("Uninstalling Gateway service...");
             await service.uninstall({ env: process.env, stdout: process.stdout });
           },
         );
@@ -161,7 +161,7 @@ export async function finalizeOnboardingWizard(
       const progress = prompter.progress("Gateway service");
       let installError: string | null = null;
       try {
-        progress.update("Preparing Gateway service…");
+        progress.update("Preparing Gateway service...");
         const tokenResolution = await resolveGatewayInstallToken({
           config: nextConfig,
           env: process.env,
@@ -187,7 +187,7 @@ export async function finalizeOnboardingWizard(
             },
           );
 
-          progress.update("Installing Gateway service…");
+          progress.update("Installing Gateway service...");
           await service.install({
             env: process.env,
             stdout: process.stdout,
@@ -230,8 +230,8 @@ export async function finalizeOnboardingWizard(
       await prompter.note(
         [
           "Docs:",
-          "https://docs.openclaw.ai/gateway/health",
-          "https://docs.openclaw.ai/gateway/troubleshooting",
+          "https://docs.vclaw.ai/gateway/health",
+          "https://docs.vclaw.ai/gateway/troubleshooting",
         ].join("\n"),
         "Health check help",
       );
@@ -286,10 +286,10 @@ export async function finalizeOnboardingWizard(
     [
       `Gateway WS: ${links.wsUrl}`,
       gatewayStatusLine,
-      `Start the terminal UI anytime: ${formatCliCommand("weiclaw tui")}`,
+      `Start the terminal UI anytime: ${formatCliCommand("vclaw tui")}`,
       "Telegram remains the primary runtime surface for day-to-day use.",
     ].join("\n"),
-    "WeiClaw runtime",
+    "Vclaw runtime",
   );
 
   let hatchChoice: "tui" | "later" | null = null;
@@ -309,7 +309,7 @@ export async function finalizeOnboardingWizard(
     }
 
     hatchChoice = await prompter.select({
-      message: "How do you want to start WeiClaw?",
+      message: "How do you want to start Vclaw?",
       options: [
         { value: "tui", label: "Hatch in TUI (recommended)" },
         { value: "later", label: "Do this later" },
@@ -330,7 +330,7 @@ export async function finalizeOnboardingWizard(
       launchedTui = true;
     } else {
       await prompter.note(
-        `When you're ready: ${formatCliCommand("weiclaw tui")}`,
+        `When you're ready: ${formatCliCommand("vclaw tui")}`,
         "Later",
       );
     }
@@ -341,13 +341,13 @@ export async function finalizeOnboardingWizard(
   await prompter.note(
     [
       "Back up your agent workspace.",
-      "Docs: https://docs.openclaw.ai/concepts/agent-workspace",
+      "Docs: https://docs.vclaw.ai/concepts/agent-workspace",
     ].join("\n"),
     "Workspace backup",
   );
 
   await prompter.note(
-    "Running agents on your computer is risky — harden your setup: https://docs.openclaw.ai/security",
+    "Running agents on your computer is risky - harden your setup: https://docs.vclaw.ai/security",
     "Security",
   );
 
@@ -378,7 +378,7 @@ export async function finalizeOnboardingWizard(
           "",
           `Provider: ${label}`,
           ...(keySource ? [keySource] : []),
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.vclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -387,10 +387,10 @@ export async function finalizeOnboardingWizard(
         [
           `Provider ${label} is selected but no API key was found.`,
           "web_search will not work until a key is added.",
-          `  ${formatCliCommand("openclaw configure --section web")}`,
+          `  ${formatCliCommand("vclaw configure --section web")}`,
           "",
-          `Get your key at: ${entry?.signupUrl ?? "https://docs.openclaw.ai/tools/web"}`,
-          "Docs: https://docs.openclaw.ai/tools/web",
+          `Get your key at: ${entry?.signupUrl ?? "https://docs.vclaw.ai/tools/web"}`,
+          "Docs: https://docs.vclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -398,9 +398,9 @@ export async function finalizeOnboardingWizard(
       await prompter.note(
         [
           `Web search (${label}) is configured but disabled.`,
-          `Re-enable: ${formatCliCommand("openclaw configure --section web")}`,
+          `Re-enable: ${formatCliCommand("vclaw configure --section web")}`,
           "",
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.vclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -417,7 +417,7 @@ export async function finalizeOnboardingWizard(
       await prompter.note(
         [
           `Web search is available via ${legacyDetected.label} (auto-detected).`,
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.vclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -425,9 +425,9 @@ export async function finalizeOnboardingWizard(
       await prompter.note(
         [
           "Web search was skipped. You can enable it later:",
-          `  ${formatCliCommand("openclaw configure --section web")}`,
+          `  ${formatCliCommand("vclaw configure --section web")}`,
           "",
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.vclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -435,15 +435,16 @@ export async function finalizeOnboardingWizard(
   }
 
   await prompter.note(
-    'What now: https://openclaw.ai/showcase ("What People Are Building").',
+    'What now: https://vclaw.ai/showcase ("What People Are Building").',
     "What now",
   );
 
   await prompter.outro(
     launchedTui
-      ? "Onboarding complete. WeiClaw is running in TUI; Telegram remains the primary external channel."
-      : "Onboarding complete. Start with `weiclaw tui` or continue from Telegram.",
+      ? "Onboarding complete. Vclaw is running in TUI; Telegram remains the primary external channel."
+      : "Onboarding complete. Start with `vclaw tui` or continue from Telegram.",
   );
 
   return { launchedTui };
 }
+

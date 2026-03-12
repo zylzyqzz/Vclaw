@@ -34,6 +34,7 @@ import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import { normalizeMainKey, parseAgentSessionKey } from "../../routing/session-key.js";
 import { normalizeSessionDeliveryFields } from "../../utils/delivery-context.js";
+import { cleanStaleLockForSessionFile } from "../../agents/session-write-lock.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
 import type { MsgContext, TemplateContext } from "../templating.js";
 import { resolveEffectiveResetTargetSessionKey } from "./acp-reset-target.js";
@@ -524,6 +525,16 @@ export async function initSessionState(params: {
     activeSessionKey: sessionKey,
   });
   sessionEntry = resolvedSessionFile.sessionEntry;
+  if (typeof sessionEntry.sessionFile === "string" && sessionEntry.sessionFile.trim().length > 0) {
+    try {
+      await cleanStaleLockForSessionFile({
+        sessionFile: sessionEntry.sessionFile,
+        log: { warn: (message) => log.warn(message) },
+      });
+    } catch (err) {
+      log.warn(`session lock preflight failed: ${String(err)}`);
+    }
+  }
   if (isNewSession) {
     sessionEntry.compactionCount = 0;
     sessionEntry.memoryFlushCompactionCount = undefined;

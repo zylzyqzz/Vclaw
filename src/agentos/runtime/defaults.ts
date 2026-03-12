@@ -1,4 +1,5 @@
 import type { AgentMemoryScope, PresetDefinition, RoleTemplate, RuntimeAgent } from "../types.js";
+import { VCLAW_DATE_VERSION } from "../version.js";
 
 const nowIso = () => new Date().toISOString();
 
@@ -41,7 +42,7 @@ function template(
     policy: basePolicy(),
     memoryScope: baseMemoryScope(),
     enabled: true,
-    version: "1.0.0",
+    version: VCLAW_DATE_VERSION,
     tags: ["demo", "preset"],
     createdAt: ts,
     updatedAt: ts,
@@ -102,7 +103,7 @@ function runtimeAgent(
     policy: basePolicy(),
     memoryScope: baseMemoryScope(),
     enabled: true,
-    version: "1.0.0",
+    version: VCLAW_DATE_VERSION,
     tags: ["demo", "preset"],
     createdAt: ts,
     updatedAt: ts,
@@ -153,7 +154,7 @@ export function defaultDemoPresets(): Record<string, PresetDefinition> {
       taskTypes: ["general", "build", "review"],
       tags: ["demo", "default"],
       enabled: true,
-      version: "1.0.0",
+      version: VCLAW_DATE_VERSION,
       createdAt: ts,
       updatedAt: ts,
     },

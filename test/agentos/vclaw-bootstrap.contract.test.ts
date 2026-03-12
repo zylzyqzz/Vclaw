@@ -10,12 +10,13 @@ describe("Vclaw bootstrap contract", () => {
     expect(raw).toContain('https://github.com/zylzyqzz/Vclaw.git');
     expect(raw).toContain('https://github.com/bytedance/deer-flow.git');
     expect(raw).toContain('E:\\Vclaw');
-    expect(raw).toContain('E:\\Vclaw(Go璇█鏈畬鎴愶級');
+    expect(raw).toContain('E:\\Vclaw-Go-unfinished');
     expect(raw).toContain('[string]$PnpmVersion = "10.23.0"');
     expect(raw).toContain('uv python install 3.12');
     expect(raw).toContain('configure-deerflow.mjs');
     expect(raw).toContain('runtime.json');
     expect(raw).toContain('vclaw.cmd');
+    expect(raw).toContain('openclaw.cmd');
     expect(raw).toContain('agentos.cmd');
     expect(raw).toContain('pnpm install');
     expect(raw).toContain('pnpm vclaw -- help');

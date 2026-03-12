@@ -66,7 +66,7 @@ export function formatUpdateAvailableHint(update: UpdateCheckResult): string | n
     details.push(`npm ${availability.latestVersion}`);
   }
   const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
-  return `Update available${suffix}. Run: ${formatCliCommand("weiclaw update")}`;
+  return `Update available${suffix}. Run: ${formatCliCommand("vclaw update")}`;
 }
 
 export function formatUpdateOneLiner(update: UpdateCheckResult): string {

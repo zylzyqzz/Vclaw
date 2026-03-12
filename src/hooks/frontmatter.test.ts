@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   parseFrontmatter,
   resolveOpenClawMetadata,
@@ -42,7 +42,7 @@ description: "Save session context"
 metadata:
   {
     "openclaw": {
-      "emoji": "💾",
+      "emoji": "馃捑",
       "events": ["command:new"]
     }
   }
@@ -58,7 +58,7 @@ metadata:
 
     // Verify the metadata is valid JSON
     const parsed = JSON.parse(result.metadata);
-    expect(parsed.openclaw.emoji).toBe("💾");
+    expect(parsed.openclaw.emoji).toBe("馃捑");
     expect(parsed.openclaw.events).toEqual(["command:new"]);
   });
 
@@ -70,7 +70,7 @@ metadata:
   {
     "openclaw":
       {
-        "emoji": "📝",
+        "emoji": "馃摑",
         "events": ["command"],
         "requires": { "config": ["workspace.dir"] },
         "install": [{ "id": "bundled", "kind": "bundled", "label": "Bundled" }]
@@ -83,7 +83,7 @@ metadata:
     expect(result.metadata).toBeDefined();
 
     const parsed = JSON.parse(result.metadata);
-    expect(parsed.openclaw.emoji).toBe("📝");
+    expect(parsed.openclaw.emoji).toBe("馃摑");
     expect(parsed.openclaw.events).toEqual(["command"]);
     expect(parsed.openclaw.requires.config).toEqual(["workspace.dir"]);
     expect(parsed.openclaw.install[0].kind).toBe("bundled");
@@ -154,7 +154,7 @@ describe("resolveOpenClawMetadata", () => {
       name: "test-hook",
       metadata: JSON.stringify({
         openclaw: {
-          emoji: "🔥",
+          emoji: "馃敟",
           events: ["command:new", "command:reset"],
           requires: {
             config: ["workspace.dir"],
@@ -166,7 +166,7 @@ describe("resolveOpenClawMetadata", () => {
 
     const result = resolveOpenClawMetadata(frontmatter);
     expect(result).toBeDefined();
-    expect(result?.emoji).toBe("🔥");
+    expect(result?.emoji).toBe("馃敟");
     expect(result?.events).toEqual(["command:new", "command:reset"]);
     expect(result?.requires?.config).toEqual(["workspace.dir"]);
     expect(result?.requires?.bins).toEqual(["git"]);
@@ -233,12 +233,12 @@ describe("resolveOpenClawMetadata", () => {
     const content = `---
 name: session-memory
 description: "Save session context to memory when /new or /reset command is issued"
-homepage: https://docs.openclaw.ai/automation/hooks#session-memory
+homepage: https://docs.vclaw.ai/automation/hooks#session-memory
 metadata:
   {
     "openclaw":
       {
-        "emoji": "💾",
+        "emoji": "馃捑",
         "events": ["command:new", "command:reset"],
         "requires": { "config": ["workspace.dir"] },
         "install": [{ "id": "bundled", "kind": "bundled", "label": "Bundled with OpenClaw" }],
@@ -255,7 +255,7 @@ metadata:
 
     const openclaw = resolveOpenClawMetadata(frontmatter);
     expect(openclaw).toBeDefined();
-    expect(openclaw?.emoji).toBe("💾");
+    expect(openclaw?.emoji).toBe("馃捑");
     expect(openclaw?.events).toEqual(["command:new", "command:reset"]);
     expect(openclaw?.requires?.config).toEqual(["workspace.dir"]);
     expect(openclaw?.install?.[0].kind).toBe("bundled");
@@ -288,3 +288,4 @@ describe("resolveHookInvocationPolicy", () => {
     expect(resolveHookInvocationPolicy({ enabled: "on" }).enabled).toBe(true);
   });
 });
+

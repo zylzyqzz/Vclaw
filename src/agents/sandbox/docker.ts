@@ -477,13 +477,13 @@ async function readContainerConfigHash(containerName: string): Promise<string | 
 
 function formatSandboxRecreateHint(params: { scope: SandboxConfig["scope"]; sessionKey: string }) {
   if (params.scope === "session") {
-    return formatCliCommand(`weiclaw sandbox recreate --session ${params.sessionKey}`);
+    return formatCliCommand(`vclaw sandbox recreate --session ${params.sessionKey}`);
   }
   if (params.scope === "agent") {
     const agentId = resolveSandboxAgentId(params.sessionKey) ?? "main";
-    return formatCliCommand(`weiclaw sandbox recreate --agent ${agentId}`);
+    return formatCliCommand(`vclaw sandbox recreate --agent ${agentId}`);
   }
-  return formatCliCommand("openclaw sandbox recreate --all");
+  return formatCliCommand("vclaw sandbox recreate --all");
 }
 
 export async function ensureSandboxContainer(params: {

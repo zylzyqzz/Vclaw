@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type DeerFlowBridgeRunner, shouldUseDeerFlow } from "../integration/deerflow-bridge.js";
+import { DefaultRoleExecutor } from "../execution/role-executor.js";
 import { MemoryManager } from "../memory/memory-manager.js";
 import { AgentRegistry, type ResolvedRuntimeAgent } from "../registry/agent-registry.js";
 import { ensurePresetExists } from "../registry/preset-utils.js";
@@ -10,6 +11,7 @@ import type {
   DeerFlowBridgeResponse,
   OrchestratorConfig,
   PresetDefinition,
+  RoleExecutionResult,
   TaskRequest,
   TaskResult,
 } from "../types.js";
@@ -36,8 +38,8 @@ function defaultConclusion(selectedRoles: string[]): string {
   return `Task completed with dynamic roles: ${selectedRoles.join(", ")}.`;
 }
 
-function defaultPlan(roleOutputs: Array<{ roleId: string; output: string }>): string[] {
-  return roleOutputs.map((entry) => entry.output);
+function defaultPlan(roleExecutions: RoleExecutionResult[]): string[] {
+  return roleExecutions.flatMap((entry) => entry.plan);
 }
 
 function defaultRisks(): string[] {
@@ -53,6 +55,55 @@ function defaultAcceptance(): string[] {
     "Result includes routeSummary, selectedRoles, selectionReasons",
     "Memory persisted across short-term, long-term, and project/entity",
   ];
+}
+
+function summarizeExecutionMode(
+  roleExecutions: RoleExecutionResult[],
+): TaskResult["executionMode"] {
+  const executors = new Set(roleExecutions.map((execution) => execution.executor));
+  if (executors.has("vclaw-fallback")) {
+    return "hybrid-role-executor";
+  }
+  if (executors.has("vclaw") && executors.has("local")) {
+    return "hybrid-role-executor";
+  }
+  if (executors.has("vclaw")) {
+    return "vclaw-role-executor";
+  }
+  return "local-role-executor";
+}
+
+function buildConclusion(
+  selectedRoles: string[],
+  roleExecutions: RoleExecutionResult[],
+  deerflow?: DeerFlowBridgeResponse,
+): string {
+  if (deerflow?.status === "completed") {
+    return deerflow.conclusion;
+  }
+  const commander = roleExecutions.find((execution) => execution.roleId.includes("commander"));
+  if (commander?.conclusion) {
+    return commander.conclusion;
+  }
+  const latest = roleExecutions.at(-1)?.conclusion;
+  return latest || defaultConclusion(selectedRoles);
+}
+
+function buildRoleOutputs(
+  roleExecutions: RoleExecutionResult[],
+  deerflow?: DeerFlowBridgeResponse,
+): Array<{ roleId: string; output: string }> {
+  const outputs = roleExecutions.map((execution) => ({
+    roleId: execution.roleId,
+    output: execution.output,
+  }));
+  if (deerflow?.status === "completed") {
+    outputs.push({
+      roleId: "deerflow-research",
+      output: deerflow.rawText.trim().length > 0 ? deerflow.rawText : deerflow.summary,
+    });
+  }
+  return outputs;
 }
 
 function deerflowFailure(
@@ -187,6 +238,7 @@ export class Orchestrator {
     private readonly sessions: SessionStore,
     private readonly memory: MemoryManager,
     private readonly deerflow?: DeerFlowBridgeRunner,
+    private readonly roleExecutor = new DefaultRoleExecutor(),
   ) {}
 
   async run(request: TaskRequest): Promise<TaskResult> {
@@ -239,31 +291,27 @@ export class Orchestrator {
         throw new Error("No enabled runtime roles are available for this task route");
       }
 
-      const roleOutputs = route.selected.map((agent, idx) => ({
-        roleId: agent.runtime.id,
-        output:
-          `[${idx + 1}] ${agent.runtime.name}: ${agent.template.systemInstruction} ` +
-          `Goal="${request.goal}" TaskType="${request.taskType ?? "general"}"`,
-      }));
-      if (deerflowResult?.status === "completed") {
-        roleOutputs.push({
-          roleId: "deerflow-research",
-          output: deerflowResult.summary,
+      const roleExecutions: RoleExecutionResult[] = [];
+      for (const agent of route.selected) {
+        const execution = await this.roleExecutor.execute({
+          taskId,
+          request,
+          agent,
+          priorExecutions: roleExecutions,
         });
+        roleExecutions.push(execution);
       }
 
       const selectedRoles = [
         ...route.selected.map((x) => x.runtime.id),
         ...(deerflowResult?.status === "completed" ? ["deerflow-research"] : []),
       ];
+      const roleOutputs = buildRoleOutputs(roleExecutions, deerflowResult);
       const plan =
-        deerflowResult?.status === "completed" && deerflowResult.plan.length > 0
-          ? uniq([...deerflowResult.plan, ...defaultPlan(roleOutputs)])
-          : defaultPlan(roleOutputs);
-      const conclusion =
         deerflowResult?.status === "completed"
-          ? deerflowResult.conclusion
-          : defaultConclusion(selectedRoles);
+          ? uniq([...deerflowResult.plan, ...defaultPlan(roleExecutions)])
+          : uniq(defaultPlan(roleExecutions));
+      const conclusion = buildConclusion(selectedRoles, roleExecutions, deerflowResult);
       const risks = uniq([
         ...(deerflowResult?.status === "completed" ? deerflowResult.risks : []),
         ...(deerflowResult && deerflowResult.status !== "completed"
@@ -273,6 +321,8 @@ export class Orchestrator {
               }`,
             ])
           : []),
+        ...roleExecutions.flatMap((execution) => execution.risks),
+        ...roleExecutions.flatMap((execution) => execution.warnings),
         ...defaultRisks(),
       ]);
       const acceptance = uniq([
@@ -282,10 +332,15 @@ export class Orchestrator {
               `DeerFlow ${deerflowResult.mode} response normalized into Vclaw task contract`,
             ]
           : []),
+        ...roleExecutions.flatMap((execution) => execution.acceptance),
         ...defaultAcceptance(),
       ]);
       const selectionReasons = [
         ...route.reasons,
+        ...roleExecutions.map(
+          (execution) =>
+            `${execution.roleId}: executor=${execution.executor}; status=${execution.status}; durationMs=${execution.durationMs}`,
+        ),
         ...deerflowDecision.reasons.map((reason) => `deerflow ${reason}`),
         ...compact(
           deerflowResult
@@ -306,16 +361,18 @@ export class Orchestrator {
             : route.routeSummary,
         selectedRoles,
         selectionReasons,
+        executionMode: summarizeExecutionMode(roleExecutions),
         conclusion,
         plan,
         risks,
         acceptance,
         roleOutputs,
+        roleExecutions,
         deerflow: deerflowResult,
       };
 
-      await this.memory.captureRun(request.sessionId, request.goal, conclusion, taskId, deerflowResult);
-      await this.sessions.markCompleted(request.sessionId, taskId);
+      await this.memory.captureRun(request, result);
+      await this.sessions.markCompleted(request.sessionId, taskId, result);
       return result;
     } catch (err) {
       await this.sessions.markFailed(

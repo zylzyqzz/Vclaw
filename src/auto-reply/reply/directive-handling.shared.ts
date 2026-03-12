@@ -15,22 +15,22 @@ export const formatElevatedRuntimeHint = () =>
 
 export const formatElevatedEvent = (level: ElevatedLevel) => {
   if (level === "full") {
-    return "Elevated FULL — exec runs on host with auto-approval.";
+    return "Elevated FULL - exec runs on host with auto-approval.";
   }
   if (level === "ask" || level === "on") {
-    return "Elevated ASK — exec runs on host; approvals may still apply.";
+    return "Elevated ASK - exec runs on host; approvals may still apply.";
   }
-  return "Elevated OFF — exec stays in sandbox.";
+  return "Elevated OFF - exec stays in sandbox.";
 };
 
 export const formatReasoningEvent = (level: ReasoningLevel) => {
   if (level === "stream") {
-    return "Reasoning STREAM — emit live <think>.";
+    return "Reasoning STREAM - emit live <think>.";
   }
   if (level === "on") {
-    return "Reasoning ON — include <think>.";
+    return "Reasoning ON - include <think>.";
   }
-  return "Reasoning OFF — hide <think>.";
+  return "Reasoning OFF - hide <think>.";
 };
 
 export function enqueueModeSwitchEvents(params: {
@@ -75,7 +75,7 @@ export function formatElevatedUnavailableText(params: {
   }
   if (params.sessionKey) {
     lines.push(
-      `See: ${formatCliCommand(`weiclaw sandbox explain --session ${params.sessionKey}`)}`,
+      `See: ${formatCliCommand(`vclaw sandbox explain --session ${params.sessionKey}`)}`,
     );
   }
   return lines.join("\n");

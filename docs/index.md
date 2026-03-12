@@ -12,6 +12,10 @@ title: "Vclaw"
   Keep durable memory, extensible skills, code execution, and gateway workflows under one Vclaw brand.
 </p>
 
+<Note>
+Current workspace release: <strong>2026.3.12</strong>
+</Note>
+
 <Columns>
   <Card title="Get Started" href="/start/getting-started" icon="rocket">
     Install Vclaw and bring up the Gateway in minutes.
@@ -35,7 +39,7 @@ Vclaw is a **local-first multi-agent runtime** with gateway capabilities. It kee
 - **Local-first**: runs on your hardware, your rules
 - **Multi-channel**: one Gateway serves WhatsApp, Telegram, Discord, and more
 - **Agent-native**: built for coding agents with tool use, sessions, memory, and multi-agent routing
-- **Compatible**: keeps legacy OpenClaw plugin-sdk and skill ecosystem compatibility where needed
+- **Workspace-native**: keeps prompts, memory, sessions, and tools in one operating surface
 
 ## How it works
 
@@ -53,16 +57,23 @@ The Gateway remains the single source of truth for sessions, routing, and channe
 ## Quick Start
 
 <Steps>
-  <Step title="Install Vclaw">
-    ```bash
-    npm install -g openclaw@latest
-    ```
-
-    The npm package name remains `openclaw` during the compatibility window, but the primary CLI brand is `vclaw`.
+  <Step title="Run the GitHub bootstrap script">
+    <Tabs>
+      <Tab title="macOS/Linux">
+        ```bash
+        curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
+        ```
+      </Tab>
+      <Tab title="Windows">
+        ```powershell
+        powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
+        ```
+      </Tab>
+    </Tabs>
   </Step>
-  <Step title="Onboard and install the service">
+  <Step title="Run onboarding">
     ```bash
-    vclaw onboard --install-daemon
+    vclaw onboard
     ```
   </Step>
   <Step title="Pair channels and start the Gateway">
@@ -77,7 +88,11 @@ Need the full install and dev setup? See [Quick start](/start/quickstart).
 
 ## Configuration
 
-Vclaw currently reads compatibility config from `~/.openclaw/openclaw.json` while the native path migration is still in progress.
+Recommended runtime home:
+
+- config: `~/.vclaw/vclaw.json`
+- workspace: `~/.vclaw/workspace`
+- runtime state: `~/.vclaw/`
 
 - If you do nothing, Vclaw uses the bundled runtime with per-sender sessions.
 - If you want to lock it down, start with `allowFrom` rules and explicit mention patterns.
@@ -86,6 +101,16 @@ Example:
 
 ```json5
 {
+  gateway: {
+    port: 18789,
+    bind: "loopback",
+    auth: {
+      token: "replace-with-a-long-random-token"
+    }
+  },
+  agent: {
+    workspace: "~/.vclaw/workspace"
+  },
   channels: {
     whatsapp: {
       allowFrom: ["+15555550123"],

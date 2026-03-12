@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import type { HookStatusReport } from "../hooks/hooks-status.js";
 import { formatHooksCheck, formatHooksList } from "./hooks-cli.js";
 import { createEmptyInstallChecks } from "./requirements-test-fixtures.js";
@@ -16,8 +16,8 @@ const report: HookStatusReport = {
       baseDir: "/tmp/hooks/session-memory",
       handlerPath: "/tmp/hooks/session-memory/handler.js",
       hookKey: "session-memory",
-      emoji: "💾",
-      homepage: "https://docs.openclaw.ai/automation/hooks#session-memory",
+      emoji: "馃捑",
+      homepage: "https://docs.vclaw.ai/automation/hooks#session-memory",
       events: ["command:new"],
       always: false,
       disabled: false,
@@ -54,7 +54,7 @@ describe("hooks cli formatting", () => {
           baseDir: "/tmp/hooks/plugin-hook",
           handlerPath: "/tmp/hooks/plugin-hook/handler.js",
           hookKey: "plugin-hook",
-          emoji: "🔗",
+          emoji: "馃敆",
           homepage: undefined,
           events: ["command:new"],
           always: false,
@@ -70,3 +70,4 @@ describe("hooks cli formatting", () => {
     expect(output).toContain("plugin:voice-call");
   });
 });
+

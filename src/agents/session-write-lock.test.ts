@@ -17,6 +17,7 @@ vi.mock("../shared/pid-alive.js", async (importOriginal) => {
 import {
   __testing,
   acquireSessionWriteLock,
+  cleanStaleLockForSessionFile,
   cleanStaleLockFiles,
   resolveSessionLockMaxHoldFromTimeout,
 } from "./session-write-lock.js";
@@ -279,6 +280,48 @@ describe("acquireSessionWriteLock", () => {
     } finally {
       await fs.rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("cleans a stale lock for a specific session file before opening it", async () => {
+    await withTempSessionLockFile(async ({ sessionFile, lockPath }) => {
+      const nowMs = Date.now();
+      await fs.writeFile(
+        lockPath,
+        JSON.stringify({
+          pid: 999_999,
+          createdAt: new Date(nowMs - 120_000).toISOString(),
+        }),
+        "utf8",
+      );
+
+      const result = await cleanStaleLockForSessionFile({
+        sessionFile,
+        staleMs: 30_000,
+        nowMs,
+        removeStale: true,
+      });
+
+      expect(result?.stale).toBe(true);
+      expect(result?.removed).toBe(true);
+      await expect(fs.access(lockPath)).rejects.toThrow();
+    });
+  });
+
+  it("keeps fresh malformed lock files for a specific session file", async () => {
+    await withTempSessionLockFile(async ({ sessionFile, lockPath }) => {
+      await fs.writeFile(lockPath, "{}", "utf8");
+
+      const result = await cleanStaleLockForSessionFile({
+        sessionFile,
+        staleMs: 60_000,
+        nowMs: Date.now(),
+        removeStale: true,
+      });
+
+      expect(result?.stale).toBe(true);
+      expect(result?.removed).toBe(false);
+      await expect(fs.access(lockPath)).resolves.toBeUndefined();
+    });
   });
 
   it("removes held locks on termination signals", async () => {

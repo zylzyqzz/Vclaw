@@ -1,6 +1,6 @@
-import { formatTerminalLink } from "../utils.js";
+﻿import { formatTerminalLink } from "../utils.js";
 
-export const DOCS_ROOT = "https://docs.openclaw.ai";
+export const DOCS_ROOT = "https://docs.vclaw.ai";
 export const DOCS_LABEL_ROOT = "https://docs.vclaw.ai";
 
 function normalizeDocsLabel(label: string): string {
@@ -32,3 +32,4 @@ export function formatDocsRootLink(label?: string): string {
     fallback: DOCS_ROOT,
   });
 }
+

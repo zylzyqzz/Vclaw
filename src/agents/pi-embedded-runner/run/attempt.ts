@@ -75,6 +75,7 @@ import { guardSessionManager } from "../../session-tool-result-guard-wrapper.js"
 import { sanitizeToolUseResultPairing } from "../../session-transcript-repair.js";
 import {
   acquireSessionWriteLock,
+  cleanStaleLockForSessionFile,
   resolveSessionLockMaxHoldFromTimeout,
 } from "../../session-write-lock.js";
 import { detectRuntimeShell } from "../../shell-utils.js";
@@ -1051,6 +1052,10 @@ export async function runEmbeddedAttempt(
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
     let systemPromptText = systemPromptOverride();
 
+    await cleanStaleLockForSessionFile({
+      sessionFile: params.sessionFile,
+      log: { warn: (message) => log.warn(message) },
+    });
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
       maxHoldMs: resolveSessionLockMaxHoldFromTimeout({
@@ -1082,6 +1087,7 @@ export async function runEmbeddedAttempt(
         agentId: sessionAgentId,
         sessionKey: params.sessionKey,
         inputProvenance: params.inputProvenance,
+        reasoningMode: params.reasoningLevel ?? "off",
         allowSyntheticToolResults: transcriptPolicy.allowSyntheticToolResults,
         allowedToolNames,
       });

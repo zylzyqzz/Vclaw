@@ -1,9 +1,11 @@
 import type { SessionManager } from "@mariozechner/pi-coding-agent";
+import type { ReasoningLevel } from "../auto-reply/thinking.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import {
   applyInputProvenanceToUserMessage,
   type InputProvenance,
 } from "../sessions/input-provenance.js";
+import { slimThinkingBlocksForPersistence } from "./pi-embedded-runner/thinking.js";
 import { installSessionToolResultGuard } from "./session-tool-result-guard.js";
 
 export type GuardedSessionManager = SessionManager & {
@@ -23,6 +25,7 @@ export function guardSessionManager(
     agentId?: string;
     sessionKey?: string;
     inputProvenance?: InputProvenance;
+    reasoningMode?: ReasoningLevel;
     allowSyntheticToolResults?: boolean;
     allowedToolNames?: Iterable<string>;
   },
@@ -62,9 +65,19 @@ export function guardSessionManager(
       }
     : undefined;
 
+  const transformMessageForPersistence = (
+    message: import("@mariozechner/pi-agent-core").AgentMessage,
+  ) => {
+    const withInputProvenance = applyInputProvenanceToUserMessage(message, opts?.inputProvenance);
+    if (opts?.reasoningMode !== "off") {
+      return withInputProvenance;
+    }
+    const slimmed = slimThinkingBlocksForPersistence([withInputProvenance]);
+    return slimmed[0] ?? withInputProvenance;
+  };
+
   const guard = installSessionToolResultGuard(sessionManager, {
-    transformMessageForPersistence: (message) =>
-      applyInputProvenanceToUserMessage(message, opts?.inputProvenance),
+    transformMessageForPersistence,
     transformToolResultForPersistence: transform,
     allowSyntheticToolResults: opts?.allowSyntheticToolResults,
     allowedToolNames: opts?.allowedToolNames,

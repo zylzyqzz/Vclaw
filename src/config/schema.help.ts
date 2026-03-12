@@ -76,9 +76,9 @@ export const FIELD_HELP: Record<string, string> = {
   "gateway.customBindHost":
     "Explicit bind host/IP used when gateway.bind is set to custom for manual interface targeting. Use a precise address and avoid wildcard binds unless external exposure is required.",
   "gateway.controlUi":
-    "Optional browser UI hosting settings including enablement, pathing, and browser-origin/auth hardening behavior. WeiClaw defaults to UI-free runtime.",
+    "Optional browser UI hosting settings including enablement, pathing, and browser-origin/auth hardening behavior. Vclaw defaults to a UI-free runtime.",
   "gateway.controlUi.enabled":
-    "Enables serving the optional browser UI from the gateway HTTP process when true. WeiClaw keeps this disabled by default.",
+    "Enables serving the optional browser UI from the gateway HTTP process when true. Vclaw keeps this disabled by default.",
   "gateway.auth":
     "Authentication policy for gateway HTTP/WebSocket access including mode, credentials, trusted-proxy behavior, and rate limiting. Keep auth enabled for every non-loopback deployment.",
   "gateway.auth.mode":
@@ -379,9 +379,9 @@ export const FIELD_HELP: Record<string, string> = {
   "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback":
     "DANGEROUS toggle that enables Host-header based origin fallback for browser UI/WebChat websocket checks. This mode is supported when your deployment intentionally relies on Host-header origin policy; explicit gateway.controlUi.allowedOrigins remains the recommended hardened default.",
   "gateway.controlUi.allowInsecureAuth":
-    "Loosens strict browser auth checks for the optional browser UI. WeiClaw Private may enable this in local private-mode defaults; disable it when you need stricter auth.",
+    "Loosens strict browser auth checks for the optional browser UI. Vclaw may enable this in local private-mode defaults; disable it when you need stricter auth.",
   "gateway.controlUi.dangerouslyDisableDeviceAuth":
-    "Disables browser UI device identity checks and relies on gateway auth only. WeiClaw Private may enable this for local self-use; turn it off when you want pairing and device trust gates back.",
+    "Disables browser UI device identity checks and relies on gateway auth only. Vclaw may enable this for local self-use; turn it off when you want pairing and device trust gates back.",
   "gateway.http.endpoints.chatCompletions.enabled":
     "Enable the OpenAI-compatible `POST /v1/chat/completions` endpoint (default: false).",
   "gateway.http.endpoints.chatCompletions.maxBodyBytes":
@@ -1439,7 +1439,7 @@ export const FIELD_HELP: Record<string, string> = {
   "messages.inbound.debounceMs":
     "Debounce window (ms) for batching rapid inbound messages from the same sender (0 to disable).",
   "channels.telegram.dmPolicy":
-    'Direct message access control. WeiClaw Private defaults to "open" with channels.telegram.allowFrom=["*"] for self-hosted Telegram-first setups.',
+    'Direct message access control. Vclaw defaults to "open" with channels.telegram.allowFrom=["*"] for self-hosted Telegram-first setups.',
   "channels.telegram.streaming":
     'Unified Telegram stream preview mode: "off" | "partial" | "block" | "progress" (default: "partial"). "progress" maps to "partial" on Telegram. Legacy boolean/streamMode keys are auto-mapped.',
   "channels.discord.streaming":

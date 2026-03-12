@@ -217,9 +217,9 @@ export function resolveGatewayDisconnectState(reason?: string): {
   if (/pairing required/i.test(reasonLabel)) {
     return {
       connectionStatus: `gateway disconnected: ${reasonLabel}`,
-      activityStatus: "pairing required: run weiclaw devices list",
+      activityStatus: "pairing required: run vclaw devices list",
       pairingHint:
-        "Pairing required. Run `weiclaw devices list`, approve your request ID, then reconnect.",
+        "Pairing required. Run `vclaw devices list`, approve your request ID, then reconnect.",
     };
   }
   return {
@@ -543,7 +543,7 @@ export async function runTui(opts: TuiOptions) {
     const agentLabel = formatAgentLabel(currentAgentId);
     header.setText(
       theme.header(
-        `weiclaw tui - ${client.connection.url} - agent ${agentLabel} - session ${sessionLabel}`,
+        `vclaw tui - ${client.connection.url} - agent ${agentLabel} - session ${sessionLabel}`,
       ),
     );
   };

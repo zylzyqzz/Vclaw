@@ -136,6 +136,7 @@ const BASE_RUN_RETRY_ITERATIONS = 24;
 const RUN_RETRY_ITERATIONS_PER_PROFILE = 8;
 const MIN_RUN_RETRY_ITERATIONS = 32;
 const MAX_RUN_RETRY_ITERATIONS = 160;
+const PROACTIVE_COMPACTION_THRESHOLD_RATIO = 0.68;
 
 function resolveMaxRunRetryIterations(profileCandidateCount: number): number {
   const scaled =
@@ -785,6 +786,35 @@ export async function runEmbeddedPiAgent(
       // repeated initialization/connection overhead per attempt.
       ensureContextEnginesInitialized();
       const contextEngine = await resolveContextEngine(params.config);
+      const buildLegacyCompactionParams = (options: {
+        trigger: "overflow" | "manual" | "threshold";
+        diagId?: string;
+        attempt?: number;
+        maxAttempts?: number;
+      }) => ({
+        sessionKey: params.sessionKey,
+        messageChannel: params.messageChannel,
+        messageProvider: params.messageProvider,
+        agentAccountId: params.agentAccountId,
+        authProfileId: lastProfileId,
+        workspaceDir: resolvedWorkspace,
+        agentDir,
+        config: params.config,
+        skillsSnapshot: params.skillsSnapshot,
+        senderIsOwner: params.senderIsOwner,
+        provider,
+        model: modelId,
+        runId: params.runId,
+        thinkLevel,
+        reasoningLevel: params.reasoningLevel,
+        bashElevated: params.bashElevated,
+        extraSystemPrompt: params.extraSystemPrompt,
+        ownerNumbers: params.ownerNumbers,
+        trigger: options.trigger,
+        diagId: options.diagId,
+        attempt: options.attempt,
+        maxAttempts: options.maxAttempts,
+      });
       try {
         let authRetryPending = false;
         // Hoisted so the retry-limit error path can use the most recent API total.
@@ -1017,30 +1047,12 @@ export async function runEmbeddedPiAgent(
                 tokenBudget: ctxInfo.tokens,
                 force: true,
                 compactionTarget: "budget",
-                legacyParams: {
-                  sessionKey: params.sessionKey,
-                  messageChannel: params.messageChannel,
-                  messageProvider: params.messageProvider,
-                  agentAccountId: params.agentAccountId,
-                  authProfileId: lastProfileId,
-                  workspaceDir: resolvedWorkspace,
-                  agentDir,
-                  config: params.config,
-                  skillsSnapshot: params.skillsSnapshot,
-                  senderIsOwner: params.senderIsOwner,
-                  provider,
-                  model: modelId,
-                  runId: params.runId,
-                  thinkLevel,
-                  reasoningLevel: params.reasoningLevel,
-                  bashElevated: params.bashElevated,
-                  extraSystemPrompt: params.extraSystemPrompt,
-                  ownerNumbers: params.ownerNumbers,
+                legacyParams: buildLegacyCompactionParams({
                   trigger: "overflow",
                   diagId: overflowDiagId,
                   attempt: overflowCompactionAttempts,
                   maxAttempts: MAX_OVERFLOW_COMPACTION_ATTEMPTS,
-                },
+                }),
               });
               if (compactResult.compacted) {
                 autoCompactionCount += 1;
@@ -1379,6 +1391,58 @@ export async function runEmbeddedPiAgent(
           // the final call, giving an accurate snapshot of current context.
           const lastCallUsage = normalizeUsage(lastAssistant?.usage as UsageLike);
           const promptTokens = derivePromptTokens(lastRunPromptUsage);
+          const promptUtilization =
+            typeof promptTokens === "number" && ctxInfo.tokens > 0 ? promptTokens / ctxInfo.tokens : 0;
+          const shouldAttemptProactiveCompaction =
+            !aborted &&
+            !timedOut &&
+            !timedOutDuringCompaction &&
+            !attempt.promptError &&
+            attemptCompactionCount === 0 &&
+            contextEngine.info.ownsCompaction !== true &&
+            typeof promptTokens === "number" &&
+            promptTokens > 0 &&
+            promptUtilization >= PROACTIVE_COMPACTION_THRESHOLD_RATIO;
+
+          if (shouldAttemptProactiveCompaction) {
+            const proactiveDiagId = createCompactionDiagId();
+            try {
+              log.warn(
+                `[context-threshold-compaction] sessionKey=${params.sessionKey ?? params.sessionId} ` +
+                  `provider=${provider}/${modelId} promptTokens=${promptTokens} ` +
+                  `contextWindow=${ctxInfo.tokens} utilization=${Math.round(promptUtilization * 100)}% ` +
+                  `diagId=${proactiveDiagId}`,
+              );
+              const compactResult = await contextEngine.compact({
+                sessionId: sessionIdUsed,
+                sessionFile: params.sessionFile,
+                tokenBudget: ctxInfo.tokens,
+                currentTokenCount: promptTokens,
+                compactionTarget: "threshold",
+                legacyParams: buildLegacyCompactionParams({
+                  trigger: "threshold",
+                  diagId: proactiveDiagId,
+                }),
+              });
+              if (compactResult.compacted) {
+                autoCompactionCount += 1;
+                log.info(
+                  `[context-threshold-compaction] compacted proactively for ${provider}/${modelId}; ` +
+                    `utilization=${Math.round(promptUtilization * 100)}%`,
+                );
+              } else if (log.isEnabled("debug")) {
+                log.debug(
+                  `[context-threshold-compaction] skipped diagId=${proactiveDiagId} ` +
+                    `reason=${compactResult.reason ?? "not-needed"}`,
+                );
+              }
+            } catch (compactionErr) {
+              log.warn(
+                `[context-threshold-compaction] failed for ${provider}/${modelId}: ${describeUnknownError(compactionErr)}`,
+              );
+            }
+          }
+
           const agentMeta: EmbeddedPiAgentMeta = {
             sessionId: sessionIdUsed,
             provider: lastAssistant?.provider ?? provider,

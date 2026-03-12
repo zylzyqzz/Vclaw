@@ -51,6 +51,9 @@ describe("cli json output and exit codes", () => {
       expect(typeof runObj.routeSummary).toBe("string");
       expect(runObj.selectedRoles).toBeInstanceOf(Array);
       expect(runObj.selectionReasons).toBeInstanceOf(Array);
+      expect(runObj.result.executionMode).toBe("local-role-executor");
+      expect(runObj.result.roleExecutions).toBeInstanceOf(Array);
+      expect(runObj.result.roleExecutions.length).toBeGreaterThan(0);
       expect(runObj.result.routeSummary).toBe(runObj.routeSummary);
 
       const demo = runCli(root, ["demo", "--json"]);

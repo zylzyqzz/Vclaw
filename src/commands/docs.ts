@@ -1,11 +1,11 @@
-import { hasBinary } from "../agents/skills.js";
+﻿import { hasBinary } from "../agents/skills.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { isRich, theme } from "../terminal/theme.js";
 
-const SEARCH_TOOL = "https://docs.openclaw.ai/mcp.SearchOpenClaw";
+const SEARCH_TOOL = "https://docs.vclaw.ai/mcp.SearchOpenClaw";
 const SEARCH_TIMEOUT_MS = 30_000;
 const DEFAULT_SNIPPET_MAX = 220;
 
@@ -193,3 +193,4 @@ export async function docsSearchCommand(queryParts: string[], runtime: RuntimeEn
   const markdown = buildMarkdown(query, results);
   await renderMarkdown(markdown, runtime);
 }
+

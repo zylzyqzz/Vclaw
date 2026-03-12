@@ -444,7 +444,7 @@ test_vclaw_checkout() {
   fi
 
   [[ -f "$candidate/package.json" ]] &&
-    [[ -f "$candidate/openclaw.mjs" ]] &&
+    [[ -f "$candidate/vclaw.mjs" ]] &&
     [[ -f "$candidate/scripts/run-node.mjs" ]]
 }
 
@@ -619,6 +619,22 @@ EOF
   chmod +x "$wrapper_path"
 }
 
+write_openclaw_wrapper() {
+  local wrapper_path="${WRAPPER_DIR}/openclaw"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log_info "[dry-run] write ${WRAPPER_DIR}/openclaw"
+    return 0
+  fi
+
+  cat >"$wrapper_path" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$TARGET_DIR"
+exec node openclaw.mjs "\$@"
+EOF
+  chmod +x "$wrapper_path"
+}
+
 write_agentos_wrapper() {
   local wrapper_path="${WRAPPER_DIR}/agentos"
   if [[ "$DRY_RUN" == "1" ]]; then
@@ -669,6 +685,7 @@ ensure_wrapper_dir_on_path() {
 ensure_wrappers() {
   preview_or_run "mkdir -p \"$WRAPPER_DIR\"" mkdir -p "$WRAPPER_DIR"
   write_vclaw_wrapper
+  write_openclaw_wrapper
   write_agentos_wrapper
   ensure_wrapper_dir_on_path
 }

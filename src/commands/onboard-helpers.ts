@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+﻿import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { inspect } from "node:util";
@@ -106,7 +106,7 @@ export function printWizardHeader(runtime: RuntimeEnv) {
     "   \\ V  V /  __/ | | | (__| |_| | | (_| |\\ V  V / ",
     "    \\_/\\_/ \\___|_|_|_|\\___|\\__,_|_|\\__,_| \\_/\\_/  ",
     " ",
-    "                WeiClaw Setup  [W]                ",
+    "                 Vclaw Setup  [V]                 ",
     " ",
   ].join("\n");
   runtime.log(header);
@@ -222,7 +222,7 @@ export function formatControlUiSshHint(params: {
     localUrl,
     authedUrl,
     "Docs:",
-    "https://docs.openclaw.ai/gateway/remote",
+    "https://docs.vclaw.ai/gateway/remote",
   ]
     .filter(Boolean)
     .join("\n");
@@ -486,3 +486,4 @@ export function resolveControlUiLinks(params: {
     wsUrl: `ws://${host}:${port}${wsPath}`,
   };
 }
+

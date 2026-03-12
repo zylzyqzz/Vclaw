@@ -132,6 +132,56 @@ describe("runEmbeddedPiAgent overflow compaction trigger routing", () => {
     expect(result.meta.error?.kind).toBe("context_overflow");
   });
 
+  it("passes trigger=threshold when proactively compacting a successful high-usage turn", async () => {
+    mockedRunEmbeddedAttempt.mockResolvedValueOnce(
+      makeAttemptResult({
+        promptError: null,
+        attemptUsage: {
+          input: 140_000,
+          output: 1_500,
+          total: 141_500,
+        },
+      }),
+    );
+    mockedCompactDirect.mockResolvedValueOnce(
+      makeCompactionSuccess({
+        summary: "Threshold compaction",
+        firstKeptEntryId: "entry-9",
+        tokensBefore: 141_500,
+      }),
+    );
+
+    const result = await runEmbeddedPiAgent(overflowBaseRunParams);
+
+    expect(mockedCompactDirect).toHaveBeenCalledTimes(1);
+    expect(mockedCompactDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: "threshold",
+        authProfileId: "test-profile",
+      }),
+    );
+    expect(result.meta.error).toBeUndefined();
+  });
+
+  it("skips proactive compaction when the attempt already compacted once", async () => {
+    mockedRunEmbeddedAttempt.mockResolvedValueOnce(
+      makeAttemptResult({
+        promptError: null,
+        compactionCount: 1,
+        attemptUsage: {
+          input: 150_000,
+          output: 800,
+          total: 150_800,
+        },
+      }),
+    );
+
+    const result = await runEmbeddedPiAgent(overflowBaseRunParams);
+
+    expect(mockedCompactDirect).not.toHaveBeenCalled();
+    expect(result.meta.error).toBeUndefined();
+  });
+
   it("returns retry_limit when repeated retries never converge", async () => {
     mockedRunEmbeddedAttempt.mockClear();
     mockedCompactDirect.mockClear();

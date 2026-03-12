@@ -14,7 +14,7 @@ export function resolveChannelDefaultAccountId<ResolvedAccount>(params: {
 }
 
 export function formatPairingApproveHint(channelId: string): string {
-  const listCmd = formatCliCommand(`weiclaw pairing list ${channelId}`);
-  const approveCmd = formatCliCommand(`weiclaw pairing approve ${channelId} <code>`);
+  const listCmd = formatCliCommand(`vclaw pairing list ${channelId}`);
+  const approveCmd = formatCliCommand(`vclaw pairing approve ${channelId} <code>`);
   return `Approve via: ${listCmd} / ${approveCmd}`;
 }

@@ -1,4 +1,5 @@
 export * from "./types.js";
+export * from "./version.js";
 export * from "./config/loader.js";
 export {
   readPresetBundleFile,
@@ -8,13 +9,6 @@ export {
   compatibleConfigExists,
   readCompatibleConfigFile,
   writePreferredConfigFile,
-} from "./config/store.js";
-// Deprecated compatibility exports: do not use as runtime source-of-truth.
-export {
-  resolveLegacyConfigPath,
-  legacyConfigExists,
-  readLegacyConfigFile,
-  writeLegacyConfigFile,
 } from "./config/store.js";
 export * from "./storage/storage.js";
 export * from "./storage/factory.js";
@@ -27,6 +21,7 @@ export * from "./registry/preset-utils.js";
 export * from "./repository/agentos-repository.js";
 export * from "./session/session-store.js";
 export * from "./memory/memory-manager.js";
+export * from "./execution/role-executor.js";
 export * from "./orchestrator/orchestrator.js";
 export * from "./runtime/create-runtime.js";
 export * from "./integration/vclaw-bridge.js";

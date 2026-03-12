@@ -170,6 +170,35 @@ export interface TaskRequest {
   preferredRoles?: string[];
   excludedRoles?: string[];
   deerflow?: DeerFlowRequestOptions;
+  roleExecution?: RoleExecutionOptions;
+}
+
+export type RoleExecutionMode = "local" | "vclaw" | "auto";
+
+export interface RoleExecutionOptions {
+  mode?: RoleExecutionMode;
+  allowWrite?: boolean;
+  vclawBin?: string;
+  vclawConfig?: string;
+  timeoutMs?: number;
+}
+
+export interface RoleExecutionResult {
+  roleId: string;
+  roleName: string;
+  executor: "local" | "vclaw" | "vclaw-fallback";
+  status: "completed" | "fallback";
+  output: string;
+  conclusion: string;
+  plan: string[];
+  risks: string[];
+  acceptance: string[];
+  prompt: string;
+  warnings: string[];
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+  command?: string[];
 }
 
 export interface TaskResult {
@@ -178,6 +207,7 @@ export interface TaskResult {
   routeSummary: string;
   selectedRoles: string[];
   selectionReasons: string[];
+  executionMode: "local-role-executor" | "vclaw-role-executor" | "hybrid-role-executor";
   conclusion: string;
   plan: string[];
   risks: string[];
@@ -186,6 +216,7 @@ export interface TaskResult {
     roleId: string;
     output: string;
   }>;
+  roleExecutions: RoleExecutionResult[];
   deerflow?: DeerFlowBridgeResponse;
 }
 

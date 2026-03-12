@@ -54,6 +54,7 @@ import { guardSessionManager } from "../session-tool-result-guard-wrapper.js";
 import { sanitizeToolUseResultPairing } from "../session-transcript-repair.js";
 import {
   acquireSessionWriteLock,
+  cleanStaleLockForSessionFile,
   resolveSessionLockMaxHoldFromTimeout,
 } from "../session-write-lock.js";
 import { detectRuntimeShell } from "../shell-utils.js";
@@ -123,7 +124,7 @@ export type CompactEmbeddedPiSessionParams = {
   customInstructions?: string;
   tokenBudget?: number;
   force?: boolean;
-  trigger?: "overflow" | "manual";
+  trigger?: "overflow" | "manual" | "threshold";
   diagId?: string;
   attempt?: number;
   maxAttempts?: number;
@@ -533,6 +534,10 @@ export async function compactEmbeddedPiSessionDirect(
     });
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
 
+    await cleanStaleLockForSessionFile({
+      sessionFile: params.sessionFile,
+      log: { warn: (message) => log.warn(message) },
+    });
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
       maxHoldMs: resolveSessionLockMaxHoldFromTimeout({

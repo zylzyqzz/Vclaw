@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import { typedCases } from "../test-utils/typed-cases.js";
 import { buildSubagentSystemPrompt } from "./subagent-announce.js";
@@ -198,8 +198,8 @@ describe("buildAgentSystemPrompt", () => {
       workspaceDir: "/tmp/openclaw",
     });
 
-    expect(prompt).toContain("## WeiClaw CLI Quick Reference");
-    expect(prompt).toContain("weiclaw gateway restart");
+    expect(prompt).toContain("## Vclaw CLI Quick Reference");
+    expect(prompt).toContain("vclaw gateway restart");
     expect(prompt).toContain("Do not invent commands");
   });
 
@@ -286,7 +286,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain('runtime="acp" requires `agentId`');
     expect(prompt).not.toContain("not ACP harness ids");
     expect(prompt).toContain("- sessions_spawn: Spawn an isolated sub-agent session");
-    expect(prompt).toContain("- agents_list: List OpenClaw agent ids allowed for sessions_spawn");
+    expect(prompt).toContain("- agents_list: List Vclaw agent ids allowed for sessions_spawn");
   });
 
   it("omits ACP harness spawn guidance for sandboxed sessions and shows ACP block note", () => {
@@ -325,9 +325,9 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain(
       "- If exactly one skill clearly applies: read its SKILL.md at <location> with `Read`, then follow it.",
     );
-    expect(prompt).toContain("WeiClaw docs path: /tmp/openclaw/docs");
+    expect(prompt).toContain("Vclaw docs path: /tmp/openclaw/docs");
     expect(prompt).toContain(
-      "For WeiClaw behavior, commands, config, or architecture: consult local docs first.",
+      "For Vclaw behavior, commands, config, or architecture: consult local docs first.",
     );
   });
 
@@ -338,9 +338,9 @@ describe("buildAgentSystemPrompt", () => {
     });
 
     expect(prompt).toContain("## Documentation");
-    expect(prompt).toContain("WeiClaw docs path: /tmp/openclaw/docs");
+    expect(prompt).toContain("Vclaw docs path: /tmp/openclaw/docs");
     expect(prompt).toContain(
-      "For WeiClaw behavior, commands, config, or architecture: consult local docs first.",
+      "For Vclaw behavior, commands, config, or architecture: consult local docs first.",
     );
   });
 
@@ -360,7 +360,7 @@ describe("buildAgentSystemPrompt", () => {
         params: {
           workspaceDir: "/tmp/openclaw",
           userTimezone: "America/Chicago",
-          userTime: "Monday, January 5th, 2026 — 3:26 PM",
+          userTime: "Monday, January 5th, 2026 鈥?3:26 PM",
           userTimeFormat: "12" as const,
         },
       },
@@ -369,7 +369,7 @@ describe("buildAgentSystemPrompt", () => {
         params: {
           workspaceDir: "/tmp/openclaw",
           userTimezone: "America/Chicago",
-          userTime: "Monday, January 5th, 2026 — 15:26",
+          userTime: "Monday, January 5th, 2026 鈥?15:26",
           userTimeFormat: "24" as const,
         },
       },
@@ -410,12 +410,12 @@ describe("buildAgentSystemPrompt", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/clawd",
       userTimezone: "America/Chicago",
-      userTime: "Monday, January 5th, 2026 — 3:26 PM",
+      userTime: "Monday, January 5th, 2026 鈥?3:26 PM",
       userTimeFormat: "12",
     });
 
     // The prompt should contain the timezone but NOT the formatted date/time string.
-    // This is intentional for prompt cache stability — the date/time was removed in
+    // This is intentional for prompt cache stability 鈥?the date/time was removed in
     // commit 66eec295b. If you're here because you want to add it back, please see
     // https://github.com/moltbot/moltbot/issues/3658 for the preferred approach:
     // gateway-level timestamp injection into messages, not the system prompt.
@@ -445,7 +445,7 @@ describe("buildAgentSystemPrompt", () => {
       toolNames: ["gateway", "exec"],
     });
 
-    expect(prompt).toContain("## WeiClaw Self-Update");
+    expect(prompt).toContain("## Vclaw Self-Update");
     expect(prompt).toContain("config.schema.lookup");
     expect(prompt).toContain("config.apply");
     expect(prompt).toContain("config.patch");
@@ -542,7 +542,7 @@ describe("buildAgentSystemPrompt", () => {
     });
 
     expect(prompt).toContain("# Project Context");
-    expect(prompt).toContain("⚠ Bootstrap truncation warning:");
+    expect(prompt).toContain("Bootstrap truncation warning:");
     expect(prompt).toContain("- AGENTS.md: 200 raw -> 0 injected");
   });
 
@@ -782,3 +782,4 @@ describe("buildSubagentSystemPrompt", () => {
     }
   });
 });
+

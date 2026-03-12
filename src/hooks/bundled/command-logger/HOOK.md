@@ -1,12 +1,12 @@
----
+﻿---
 name: command-logger
 description: "Log all command events to a centralized audit file"
-homepage: https://docs.openclaw.ai/automation/hooks#command-logger
+homepage: https://docs.vclaw.ai/automation/hooks#command-logger
 metadata:
   {
     "openclaw":
       {
-        "emoji": "📝",
+        "emoji": "馃摑",
         "events": ["command"],
         "install": [{ "id": "bundled", "kind": "bundled", "label": "Bundled with OpenClaw" }],
       },
@@ -120,3 +120,4 @@ Filter by action:
 ```bash
 grep '"action":"new"' ~/.openclaw/logs/commands.log | jq .
 ```
+
