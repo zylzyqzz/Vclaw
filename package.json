@@ -218,6 +218,7 @@
   },
   "scripts": {
     "agentos": "node --import tsx src/cli/agentos.ts",
+    "bootstrap:vclaw": "powershell -ExecutionPolicy Bypass -File scripts/vclaw-bootstrap.ps1",
     "vclaw:agentos": "node --import tsx src/cli/agentos.ts",
     "android:assemble": "cd apps/android && ./gradlew :app:assembleDebug",
     "android:format": "cd apps/android && ./gradlew :app:ktlintFormat :benchmark:ktlintFormat",

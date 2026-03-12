@@ -11,6 +11,21 @@ title: "Installer Internals"
 
 OpenClaw ships three installer scripts, served from `openclaw.ai`.
 
+For the current local Vclaw workspace on Windows, the recommended single-command bootstrap is:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
+```
+
+That Windows-first bootstrap command:
+
+- checks `git`, Node.js, Corepack, and `pnpm`
+- archives a non-repo `E:\Vclaw` folder to `E:\Vclaw(Go语言未完成）` when needed
+- updates or clones the repo into `E:\Vclaw`
+- runs `pnpm install`
+- creates `vclaw.cmd` and `agentos.cmd` wrappers
+- verifies the install with CLI smoke commands
+
 | Script                             | Platform             | What it does                                                                                 |
 | ---------------------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
 | [`install.sh`](#installsh)         | macOS / Linux / WSL  | Installs Node if needed, installs OpenClaw via npm (default) or git, and can run onboarding. |

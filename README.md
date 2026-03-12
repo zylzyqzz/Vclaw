@@ -13,7 +13,23 @@ The goal of this repository is straightforward:
 
 ## Start Here
 
-If you are opening this repository for the first time, do this:
+If you are on Windows and want the closest thing to "one command, everything done", use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
+```
+
+What that command does:
+
+- checks `git`, Node.js 22+, Corepack, and `pnpm`
+- installs missing tools when supported installers are available
+- keeps `E:\Vclaw(Go语言未完成）` as the archived Go workspace if needed
+- syncs the repo into `E:\Vclaw`
+- runs `pnpm install`
+- creates `vclaw.cmd` and `agentos.cmd` wrappers in `%USERPROFILE%\.local\bin`
+- verifies installation with CLI smoke commands
+
+If you prefer the manual source-install path, do this:
 
 1. Install Node 22 and `git`
 2. Enable `pnpm` through Corepack
@@ -28,11 +44,25 @@ The full copy-paste instructions are below.
 
 This README documents the safest installation path for most operators:
 
+- use the Windows bootstrap script if you want machine setup and install in one command
 - run Vclaw directly from the source checkout
 - use repo-local `pnpm` commands first
 - verify the runtime before exploring packaging, deployment, or platform-specific flows
 
 This is the most reliable path because it always matches the exact code in your checkout.
+
+### Recommended on Windows
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
+```
+
+After it finishes successfully, you should be able to run:
+
+```powershell
+vclaw --help
+agentos demo
+```
 
 ### Step 1. Install prerequisites
 
@@ -345,6 +375,23 @@ pnpm vclaw -- help
 - [Getting started docs](docs/start/getting-started.md)
 
 ## Troubleshooting
+
+### You want full machine bootstrap in one command
+
+Use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
+```
+
+That is the Windows-first path that:
+
+- checks the environment
+- installs missing prerequisites
+- updates or clones the repo
+- installs dependencies
+- creates wrappers
+- runs smoke verification
 
 ### `pnpm` is not recognized
 
