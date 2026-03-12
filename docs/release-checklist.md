@@ -18,10 +18,12 @@ pnpm exec vitest run test/agentos/*.test.ts
 
 ```bash
 pnpm vclaw:agentos -- help
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace --json
 pnpm vclaw:agentos -- demo
 pnpm vclaw:agentos -- demo --json
 pnpm vclaw:agentos -- run --goal "release smoke" --preset default-demo --json
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
+pnpm vclaw:agentos -- inspect-session --session demo-main --json
 ```
 
 4. Docs consistency

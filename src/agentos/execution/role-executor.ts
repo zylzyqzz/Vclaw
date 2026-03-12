@@ -99,6 +99,28 @@ function summarizePriorExecutions(priorExecutions: RoleExecutionResult[]): strin
     .join("\n");
 }
 
+function summarizeSessionReplay(request: TaskRequest): string {
+  const turns = request.sessionReplay?.turns ?? [];
+  if (turns.length === 0) {
+    return "- none";
+  }
+
+  return turns
+    .map((turn) => {
+      const summary = turn.conclusion || turn.routeSummary || turn.goal;
+      return `- ${turn.status} :: ${collapseWhitespace(summary).slice(0, 220)}`;
+    })
+    .join("\n");
+}
+
+function summarizeMemoryContext(request: TaskRequest): string {
+  const entries = request.memoryContext?.summary ?? [];
+  if (entries.length === 0) {
+    return "- none";
+  }
+  return entries.map((entry) => `- ${entry}`).join("\n");
+}
+
 function buildRolePrompt(input: ExecuteRoleInput): string {
   const { agent, request, priorExecutions } = input;
   return [
@@ -122,6 +144,12 @@ function buildRolePrompt(input: ExecuteRoleInput): string {
         ? (request.constraints ?? []).map((item) => `- ${item}`).join("\n")
         : "- none"
     }`,
+    "",
+    "Session replay:",
+    summarizeSessionReplay(request),
+    "",
+    "Recalled memory:",
+    summarizeMemoryContext(request),
     "",
     "Prior role outputs:",
     summarizePriorExecutions(priorExecutions),
@@ -152,6 +180,8 @@ function localRoleOutput(input: ExecuteRoleInput): Omit<RoleExecutionResult, "st
   const priorRisks = fromPrior(priorExecutions, "risks");
   const priorAcceptance = fromPrior(priorExecutions, "acceptance");
   const constraints = dedupe(request.constraints ?? []);
+  const recalledMemory = (request.memoryContext?.summary ?? []).slice(0, 2);
+  const priorTurns = request.sessionReplay?.turns ?? [];
 
   let conclusion = `${agent.runtime.name} prepared a focused contribution for "${shortGoal}".`;
   let plan = [
@@ -166,6 +196,16 @@ function localRoleOutput(input: ExecuteRoleInput): Omit<RoleExecutionResult, "st
     `${agent.runtime.name} output stays within the requested contract`,
     "Next role or operator can act on the result without additional unpacking",
   ];
+
+  if (recalledMemory.length > 0) {
+    plan = dedupe([`Reuse prior memory context: ${recalledMemory[0]}`, ...plan]);
+  }
+  if (priorTurns.length > 0) {
+    acceptance = dedupe([
+      `Current output continues a session with ${priorTurns.length} recorded turn(s)`,
+      ...acceptance,
+    ]);
+  }
 
   if (roleId.includes("planner")) {
     conclusion = `Planner decomposed "${shortGoal}" into an execution-ready sequence.`;
@@ -190,6 +230,7 @@ function localRoleOutput(input: ExecuteRoleInput): Omit<RoleExecutionResult, "st
   } else if (roleId.includes("builder")) {
     conclusion = `Builder translated the plan for "${shortGoal}" into runnable implementation steps.`;
     plan = dedupe([
+      ...recalledMemory.map((item) => `Carry forward known context: ${item}`),
       ...(priorPlans.length > 0 ? priorPlans.slice(0, 2) : []),
       "Implement the smallest end-to-end slice first",
       "Add or update verification coverage before broadening scope",
@@ -226,6 +267,7 @@ function localRoleOutput(input: ExecuteRoleInput): Omit<RoleExecutionResult, "st
   } else if (roleId.includes("commander")) {
     conclusion = `Commander synthesized the role outputs for "${shortGoal}" into a final direction.`;
     plan = dedupe([
+      ...recalledMemory.map((item) => `Preserve recalled context in the final decision: ${item}`),
       ...(priorPlans.length > 0 ? priorPlans.slice(0, 3) : ["Consolidate role guidance into one operator-ready path"]),
       "Resolve tradeoffs and keep the highest-value path visible",
       "Close with a clear final recommendation and acceptance bar",

@@ -1,28 +1,32 @@
 # Vclaw AgentOS CLI Usage
 
-## 推荐入口
+Version: `2026.3.12`
 
-首选入口:
+## Preferred Entry Point
 
 ```bash
 pnpm vclaw:agentos -- <command>
 ```
 
-兼容入口:
+Compatibility alias:
 
 ```bash
 pnpm agentos -- <command>
 ```
 
-## 命令分组
+## Command Groups
 
-### 运行
+### Runtime
 
 - `demo [--goal <text>] [--preset <id>] [--session <id>]`
 - `run --goal <text> [--roles a,b] [--preset <id>] [--task-type <type>] [--required-capabilities a,b] [--preferred-roles a,b] [--excluded-roles a,b]`
-- `chat [--roles a,b] [--preset <id>]`
+- `chat [--roles a,b] [--preset <id>] [--executor local|vclaw|auto]`
+- `inspect-memory [--session <id>] [--layer short-term|long-term|project-entity]`
+- `inspect-session [--session <id>] [--limit <number>]`
+- `setup-workspace [--workspace <dir>]`
+- `vclaw-run --task <text> [--allow-write true|false] [--vclaw-bin <path>] [--vclaw-config <path>] [--timeout-ms <number>]`
 
-### 角色
+### Roles
 
 - `list-roles`
 - `inspect-role --id <roleId>`
@@ -35,7 +39,7 @@ pnpm agentos -- <command>
 - `import-role --file <path.json> [--overwrite true|false]`
 - `validate-role --id <roleId> | --file <path.json>`
 
-### 预设
+### Presets
 
 - `list-presets`
 - `inspect-preset --id <presetId>`
@@ -46,48 +50,51 @@ pnpm agentos -- <command>
 - `import-preset --file <path.json> [--overwrite true|false]`
 - `validate-preset --id <presetId> | --file <path.json>`
 
-### 记忆
+Compatibility alias:
 
-- `inspect-memory [--session <id>] [--layer short-term|long-term|project-entity]`
+- `list-agents` still works, but new scripts should use `list-roles`
 
-兼容别名:
+## Common Flows
 
-- `list-agents` 仍可用，建议统一迁移到 `list-roles`
-
-## 常见用法
-
-### 强制角色执行
+### Seed the minimal workspace
 
 ```bash
-pnpm vclaw:agentos -- run --goal "评审当前风险" --roles planner,reviewer
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace
 ```
 
-### 使用预设组合
+### Force specific roles
 
 ```bash
-pnpm vclaw:agentos -- run --goal "完成 v2.1.0 发布规划" --preset default-demo
+pnpm vclaw:agentos -- run --goal "review the current release risks" --roles planner,reviewer
 ```
 
-### 动态路由
+### Use a preset
 
 ```bash
-pnpm vclaw:agentos -- run --goal "调查性能瓶颈" --task-type research --required-capabilities research --preset ""
+pnpm vclaw:agentos -- run --goal "finish the release hardening pass" --preset default-demo
 ```
 
-### 机器可读模式
+### Use dynamic routing
 
 ```bash
-pnpm vclaw:agentos -- run --goal "输出 JSON 契约" --preset default-demo --json
+pnpm vclaw:agentos -- run --goal "investigate the bottleneck" --task-type research --required-capabilities research --preset ""
 ```
 
-### 观察 memory 写入
+### Machine-readable mode
+
+```bash
+pnpm vclaw:agentos -- run --goal "return the structured contract" --preset default-demo --json
+```
+
+### Inspect session continuity
 
 ```bash
 pnpm vclaw:agentos -- demo --session demo-main
+pnpm vclaw:agentos -- inspect-session --session demo-main --json
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
 ```
 
-默认一次 `run` 会写入三层 memory:
+One successful `run` writes layered memory into:
 
 - `short-term`
 - `long-term`
@@ -95,24 +102,9 @@ pnpm vclaw:agentos -- inspect-memory --session demo-main --json
 
 ## Exit Codes
 
-- `0` 成功
-- `1` 参数错误 / 未知命令 / 未预期错误
-- `2` 校验失败
-- `3` 资源不存在或冲突
+- `0` success
+- `1` bad request, unknown command, or unexpected error
+- `2` validation failed
+- `3` not found or conflict
 
-结构化错误对象见 `docs/cli-schema.md`。
-
-## Vclaw Bridge
-
-通过 AgentOS 统一入口把任务委托给外部 `Vclaw` 执行:
-
-```bash
-pnpm vclaw:agentos -- vclaw-run --task "scan workspace and summarize risks" --json
-```
-
-可选参数:
-
-- `--vclaw-bin <path>`: 显式指定 Vclaw 可执行文件
-- `--vclaw-config <path>`: 透传 Vclaw 配置文件
-- `--allow-write true|false`: 控制是否允许写入
-- `--timeout-ms <number>`: 子进程超时毫秒数
+See [docs/cli-schema.md](/E:/Vclaw/docs/cli-schema.md) for the structured JSON contract.

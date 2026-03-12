@@ -171,6 +171,8 @@ export interface TaskRequest {
   excludedRoles?: string[];
   deerflow?: DeerFlowRequestOptions;
   roleExecution?: RoleExecutionOptions;
+  sessionReplay?: SessionReplay;
+  memoryContext?: MemoryRecall;
 }
 
 export type RoleExecutionMode = "local" | "vclaw" | "auto";
@@ -201,6 +203,63 @@ export interface RoleExecutionResult {
   command?: string[];
 }
 
+export interface MemoryRecallHit {
+  id: string;
+  layer: MemoryLayer;
+  scope: string;
+  summary: string;
+  sourceTaskId?: string;
+  createdAt: string;
+  score: number;
+}
+
+export interface MemoryRecall {
+  query: string;
+  hits: MemoryRecallHit[];
+  summary: string[];
+}
+
+export interface SessionTimelineEntry {
+  taskId: string;
+  status: SessionState["status"];
+  routeSummary?: string;
+  selectedRoles?: string[];
+  conclusion?: string;
+  executionMode?: TaskResult["executionMode"];
+  updatedAt: string;
+}
+
+export interface SessionTurn {
+  taskId: string;
+  goal: string;
+  status: SessionState["status"];
+  routeSummary?: string;
+  selectedRoles: string[];
+  conclusion?: string;
+  executionMode?: TaskResult["executionMode"];
+  memorySummary: string[];
+  roleTrace: Array<{
+    roleId: string;
+    executor: RoleExecutionResult["executor"];
+    status: RoleExecutionResult["status"];
+    conclusion: string;
+  }>;
+  updatedAt: string;
+}
+
+export interface SessionReplay {
+  sessionId: string;
+  activeTaskId?: string;
+  status: SessionState["status"];
+  updatedAt: string;
+  lastTaskId?: string;
+  lastConclusion?: string;
+  lastSelectedRoles: string[];
+  lastExecutionMode?: TaskResult["executionMode"];
+  timeline: SessionTimelineEntry[];
+  turns: SessionTurn[];
+}
+
 export interface TaskResult {
   requestId: string;
   sessionId: string;
@@ -217,6 +276,8 @@ export interface TaskResult {
     output: string;
   }>;
   roleExecutions: RoleExecutionResult[];
+  sessionReplay: SessionReplay;
+  memoryContext: MemoryRecall;
   deerflow?: DeerFlowBridgeResponse;
 }
 

@@ -65,7 +65,9 @@ describe("role executor runtime", () => {
       expect(session?.meta.lastTaskId).toBe(result.requestId);
       expect(session?.meta.lastExecutionMode).toBe(result.executionMode);
       expect(Array.isArray(session?.meta.timeline)).toBe(true);
+      expect(Array.isArray(session?.meta.turns)).toBe(true);
       expect((session?.meta.timeline as Array<{ taskId: string }>)[0]?.taskId).toBe(result.requestId);
+      expect((session?.meta.turns as Array<{ taskId: string }>)[0]?.taskId).toBe(result.requestId);
     } finally {
       await env.storage.close();
       await rm(env.root, { recursive: true, force: true });

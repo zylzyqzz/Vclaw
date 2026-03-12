@@ -1,5 +1,59 @@
 import type { AgentOsStorage } from "../storage/storage.js";
-import type { MemoryLayer, MemoryRecord, TaskRequest, TaskResult } from "../types.js";
+import type {
+  MemoryLayer,
+  MemoryRecall,
+  MemoryRecallHit,
+  MemoryRecord,
+  TaskRequest,
+  TaskResult,
+} from "../types.js";
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function tokenize(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .toLowerCase()
+        .split(/[^a-z0-9\u4e00-\u9fa5]+/u)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 2),
+    ),
+  );
+}
+
+function memoryPreview(record: MemoryRecord): string {
+  return collapseWhitespace(record.summary ?? record.content).slice(0, 180);
+}
+
+function scoreRecord(
+  record: MemoryRecord,
+  keywords: string[],
+  index: number,
+): number {
+  const haystack = `${record.scope} ${record.summary ?? ""} ${record.content}`.toLowerCase();
+  const matches = keywords.filter((keyword) => haystack.includes(keyword));
+  const layerWeight =
+    record.layer === "short-term" ? 4 : record.layer === "project-entity" ? 3 : 2;
+  return matches.length * 6 + layerWeight + Math.max(0, 12 - index);
+}
+
+function recallSummary(hits: MemoryRecallHit[]): string[] {
+  if (hits.length === 0) {
+    return ["No prior session memory matched this task yet."];
+  }
+  return Array.from(new Set(hits.map((hit) => `[${hit.layer}] ${hit.summary}`)));
+}
+
+function shouldExcludeFromRecall(record: MemoryRecord): boolean {
+  return (
+    record.scope.endsWith(":memory-recall") ||
+    record.scope.endsWith(":route") ||
+    record.scope.endsWith(":goal")
+  );
+}
 
 export class MemoryManager {
   constructor(private readonly storage: AgentOsStorage) {}
@@ -20,6 +74,56 @@ export class MemoryManager {
       sourceTaskId,
       summary,
     });
+  }
+
+  async recall(request: TaskRequest, limit = 6): Promise<MemoryRecall> {
+    const keywords = tokenize(
+      [request.goal, request.taskType ?? "", ...(request.constraints ?? [])].join(" "),
+    );
+    const recent = (await this.storage.listMemory({
+      sessionId: request.sessionId,
+      limit: Math.max(limit * 8, 24),
+    })).filter((record) => !shouldExcludeFromRecall(record));
+
+    const scored = recent
+      .map((record, index) => ({
+        record,
+        score: scoreRecord(record, keywords, index),
+      }))
+      .filter((entry) => entry.score > 0)
+      .toSorted((left, right) => right.score - left.score)
+      .slice(0, limit);
+
+    const fallback = scored.length > 0 ? scored : recent.slice(0, Math.min(limit, 3)).map((record, index) => ({
+      record,
+      score: Math.max(1, 3 - index),
+    }));
+
+    const hits = [] as MemoryRecallHit[];
+    const seen = new Set<string>();
+    for (const { record, score } of fallback) {
+      const summary = memoryPreview(record);
+      const dedupeKey = `${record.layer}|${summary}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+      hits.push({
+        id: record.id,
+        layer: record.layer,
+        scope: record.scope,
+        summary,
+        sourceTaskId: record.sourceTaskId,
+        createdAt: record.createdAt,
+        score,
+      });
+    }
+
+    return {
+      query: request.goal,
+      hits,
+      summary: recallSummary(hits),
+    };
   }
 
   async captureRun(request: TaskRequest, result: TaskResult): Promise<void> {
@@ -47,6 +151,16 @@ export class MemoryManager {
       result.requestId,
       result.routeSummary,
     );
+    if (result.memoryContext.hits.length > 0) {
+      await this.write(
+        request.sessionId,
+        "short-term",
+        `session:${request.sessionId}:memory-recall`,
+        JSON.stringify(result.memoryContext, null, 2),
+        result.requestId,
+        result.memoryContext.summary.join(" | "),
+      );
+    }
     await this.write(
       request.sessionId,
       "long-term",

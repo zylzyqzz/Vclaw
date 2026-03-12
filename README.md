@@ -217,6 +217,7 @@ pnpm vclaw doctor
 ### 2. AgentOS Demo
 
 ```bash
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace --json
 pnpm vclaw:agentos -- demo --json
 ```
 
@@ -232,7 +233,13 @@ pnpm vclaw:agentos -- run --goal "generate a release checklist" --preset default
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
 ```
 
-### 5. Use a Real Vclaw Role Executor
+### 5. Inspect Session Replay
+
+```bash
+pnpm vclaw:agentos -- inspect-session --session demo-main --json
+```
+
+### 6. Use a Real Vclaw Role Executor
 
 ```bash
 pnpm vclaw:agentos -- run --goal "implement release hardening" --executor vclaw --json
@@ -248,18 +255,47 @@ Minimum core commands:
 - `run`
 - `chat`
 - `inspect-memory`
+- `inspect-session`
+- `setup-workspace`
 - `list-roles`
 - `list-presets`
 
 Useful examples:
 
 ```bash
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace --json
 pnpm vclaw:agentos -- list-roles --json
 pnpm vclaw:agentos -- list-presets --json
 pnpm vclaw:agentos -- chat --preset default-demo
 pnpm vclaw:agentos -- run --goal "assess release risk" --task-type review --json
+pnpm vclaw:agentos -- inspect-session --session local-main --json
 pnpm vclaw:agentos -- run --goal "research competitors" --task-type research --deerflow true --json
 ```
+
+## Minimal Multi-Agent Prompt Config
+
+If you want the smallest reliable AgentOS setup, start here:
+
+```bash
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace
+```
+
+The generated files are the prompt surface:
+
+- `AGENTS.md` sets global operating rules and hard boundaries
+- `SOUL.md` sets tone, persona, and collaboration style
+- `IDENTITY.md` sets the visible agent name and presentation
+- `USER.md` stores operator preferences and default assumptions
+- `TOOLS.md` stores machine-specific notes and tool guidance
+- `BOOTSTRAP.md` handles first-run onboarding and is removed after completion
+
+The smoothest first flow is:
+
+1. Run `setup-workspace`
+2. Edit `AGENTS.md`, `SOUL.md`, and `IDENTITY.md`
+3. Run `pnpm vclaw:agentos -- demo --json`
+4. Run a real task with `pnpm vclaw:agentos -- run --goal "..." --json`
+5. Inspect continuity with `pnpm vclaw:agentos -- inspect-session --session local-main --json`
 
 ## Memory Model
 
@@ -285,14 +321,14 @@ What is already solid:
 - Vclaw-first CLI entrypoints
 - AgentOS storage, registry, and routing
 - layered memory persistence
-- session metadata and timeline capture
+- session replay, metadata, and timeline capture
+- setup-workspace scaffolding for prompt configuration
 - optional DeerFlow research augmentation
 
 What still needs further hardening:
 
 - deeper route evaluation
-- richer session replay ergonomics
-- broader memory recall and compaction policy
+- broader cross-session memory recall and compaction policy
 - further cleanup of old internal naming in deep platform-specific code
 
 ## Version Policy
@@ -315,6 +351,7 @@ This applies to:
 - `docs/roadmap.md`
 - `docs/known-limitations.md`
 - `docs/release-checklist.md`
+- `docs/start/agentos-minimal.md`
 
 ## Development Notes
 

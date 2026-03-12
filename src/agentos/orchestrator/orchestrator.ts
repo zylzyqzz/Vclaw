@@ -243,10 +243,28 @@ export class Orchestrator {
 
   async run(request: TaskRequest): Promise<TaskResult> {
     const taskId = randomUUID();
-    await this.sessions.markRunning(request.sessionId, taskId);
+    const previousSessionReplay = await this.sessions.inspect(request.sessionId, 6);
+    const memoryContext = await this.memory.recall(
+      {
+        ...request,
+        sessionReplay: previousSessionReplay,
+      },
+      6,
+    );
+    const enrichedRequest: TaskRequest = {
+      ...request,
+      sessionReplay: previousSessionReplay,
+      memoryContext,
+      context: {
+        ...(request.context ?? {}),
+        agentosSessionReplay: previousSessionReplay,
+        agentosMemoryContext: memoryContext,
+      },
+    };
+    await this.sessions.markRunning(request.sessionId, taskId, request.goal);
     try {
-      const route = await this.selectRoles(request);
-      const deerflowDecision = shouldUseDeerFlow(this.config.deerflow, request);
+      const route = await this.selectRoles(enrichedRequest);
+      const deerflowDecision = shouldUseDeerFlow(this.config.deerflow, enrichedRequest);
       let deerflowResult: DeerFlowBridgeResponse | undefined;
       if (deerflowDecision.use) {
         if (this.deerflow) {
@@ -254,13 +272,13 @@ export class Orchestrator {
             deerflowResult = await this.deerflow.run({
               taskId,
               sessionId: request.sessionId,
-              goal: request.goal,
-              taskType: request.taskType,
-              constraints: request.constraints ?? [],
-              context: request.context,
+              goal: enrichedRequest.goal,
+              taskType: enrichedRequest.taskType,
+              constraints: enrichedRequest.constraints ?? [],
+              context: enrichedRequest.context,
               requestedOutput: "conclusion + plan + risks + acceptance",
               options: {
-                ...request.deerflow,
+                ...enrichedRequest.deerflow,
                 mode: deerflowDecision.mode,
               },
             });
@@ -295,7 +313,7 @@ export class Orchestrator {
       for (const agent of route.selected) {
         const execution = await this.roleExecutor.execute({
           taskId,
-          request,
+          request: enrichedRequest,
           agent,
           priorExecutions: roleExecutions,
         });
@@ -337,6 +355,9 @@ export class Orchestrator {
       ]);
       const selectionReasons = [
         ...route.reasons,
+        `session replay turns available: ${previousSessionReplay.turns.length}`,
+        `memory recall hits: ${memoryContext.hits.length}`,
+        ...memoryContext.summary.map((summary) => `memory ${summary}`),
         ...roleExecutions.map(
           (execution) =>
             `${execution.roleId}: executor=${execution.executor}; status=${execution.status}; durationMs=${execution.durationMs}`,
@@ -368,17 +389,21 @@ export class Orchestrator {
         acceptance,
         roleOutputs,
         roleExecutions,
+        sessionReplay: previousSessionReplay,
+        memoryContext,
         deerflow: deerflowResult,
       };
 
-      await this.memory.captureRun(request, result);
-      await this.sessions.markCompleted(request.sessionId, taskId, result);
+      await this.memory.captureRun(enrichedRequest, result);
+      await this.sessions.markCompleted(request.sessionId, taskId, enrichedRequest, result);
+      result.sessionReplay = await this.sessions.inspect(request.sessionId, 6);
       return result;
     } catch (err) {
       await this.sessions.markFailed(
         request.sessionId,
         taskId,
         err instanceof Error ? err.message : String(err),
+        request.goal,
       );
       throw err;
     }

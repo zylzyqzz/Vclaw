@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -70,6 +70,29 @@ describe("cli json output and exit codes", () => {
       expect(memoryObj.command).toBe("inspect-memory");
       expect(memoryObj.result.records).toBeInstanceOf(Array);
       expect(memoryObj.result.summary.total).toBeTypeOf("number");
+
+      const session = runCli(root, ["inspect-session", "--session", "demo-main", "--json"]);
+      expect(session.status).toBe(0);
+      const sessionObj = JSON.parse(session.stdout);
+      expect(sessionObj.ok).toBe(true);
+      expect(sessionObj.command).toBe("inspect-session");
+      expect(sessionObj.result.sessionId).toBe("demo-main");
+      expect(sessionObj.result.turns).toBeInstanceOf(Array);
+
+      const workspaceDir = path.join(root, ".vclaw", "workspace");
+      const setupWorkspace = runCli(root, [
+        "setup-workspace",
+        "--workspace",
+        workspaceDir,
+        "--json",
+      ]);
+      expect(setupWorkspace.status).toBe(0);
+      const setupObj = JSON.parse(setupWorkspace.stdout);
+      expect(setupObj.ok).toBe(true);
+      expect(setupObj.command).toBe("setup-workspace");
+      expect(setupObj.result.workspaceDir).toBe(workspaceDir);
+      expect(setupObj.result.files).toBeInstanceOf(Array);
+      await access(path.join(workspaceDir, "AGENTS.md"));
     } finally {
       await rm(root, { recursive: true, force: true });
     }

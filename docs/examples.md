@@ -1,69 +1,80 @@
 # Vclaw AgentOS Examples
 
+Version: `2026.3.12`
+
 ## Recommended Demo Set
 
 ```bash
+pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace
 pnpm vclaw:agentos -- demo
 pnpm vclaw:agentos -- demo --json
 pnpm vclaw:agentos -- run --goal "investigate release risks" --task-type review --required-capabilities review --preset "" --json
+pnpm vclaw:agentos -- inspect-session --session demo-main --json
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
 ```
 
-这组命令可以在 2 到 3 分钟内快速展示:
+This set shows, within a few minutes:
 
-- 动态角色不是固定硬编码
-- 路由解释同时支持人类阅读和机器解析
-- memory 会在执行后留下可检查记录
+- dynamic role selection instead of hard-coded routing
+- explainable route decisions
+- replayable session state
+- inspectable memory capture
 
 ## Sample Tasks
 
-### 发布规划
+### Release planning
 
 ```bash
-pnpm vclaw:agentos -- run --goal "完成 v2.1.0 正式版发布规划" --preset default-demo
+pnpm vclaw:agentos -- run --goal "finish the v2.1.0 release hardening plan" --preset default-demo
 ```
 
-预期:
+Expected:
 
-- `planner` 和 `commander` 输出结构化结论与计划
+- `planner` and `commander` produce structured plan output
 
-### 代码实现与评审
+### Build and review flow
 
 ```bash
-pnpm vclaw:agentos -- run --goal "实现并评审一条新的 CLI 路由" --roles builder,reviewer
+pnpm vclaw:agentos -- run --goal "implement and review a new CLI route" --roles builder,reviewer
 ```
 
-预期:
+Expected:
 
-- `builder` 给出实现路径
-- `reviewer` 给出风险和验收点
+- `builder` produces an implementation path
+- `reviewer` surfaces the risk and acceptance gates
 
-### 动态路由
+### Dynamic research route
 
 ```bash
-pnpm vclaw:agentos -- run --goal "调查异常并给出修复方案" --task-type research --required-capabilities research,review --preset ""
+pnpm vclaw:agentos -- run --goal "investigate an anomaly and propose a repair" --task-type research --required-capabilities research,review --preset ""
 ```
 
-预期:
+Expected:
 
-- 输出 `selectedRoles`
-- 输出 `selectionReasons`
+- `selectedRoles` is present
+- `selectionReasons` is present
+- `memoryContext` and `sessionReplay` are present in JSON mode
 
-### 记忆观察
+### Session continuity
 
 ```bash
-pnpm vclaw:agentos -- demo
-pnpm vclaw:agentos -- inspect-memory --session demo-main
-pnpm vclaw:agentos -- inspect-memory --session demo-main --layer long-term
+pnpm vclaw:agentos -- run --goal "plan release hardening" --session local-main --json
+pnpm vclaw:agentos -- run --goal "continue release hardening and validate regressions" --session local-main --json
+pnpm vclaw:agentos -- inspect-session --session local-main --json
 ```
 
-### JSON Smoke Test
+Expected:
+
+- the second run includes recalled same-session memory
+- `inspect-session` shows both turns and role traces
+
+### JSON smoke test
 
 ```bash
 pnpm vclaw:agentos -- demo --json
 pnpm vclaw:agentos -- validate-preset --id default-demo --json
 ```
 
-预期:
+Expected:
 
-- 顶层结构统一为 `ok/command/version/result/error/metadata`
+- a stable top-level envelope with `ok`, `command`, `version`, `result`, `error`, and `metadata`

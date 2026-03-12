@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+import path from "node:path";
 import { stdin as input, stdout as output } from "node:process";
 import readline from "node:readline/promises";
+import { ensureAgentWorkspace } from "../agents/workspace.js";
+import { resolveAgentOsDataDir } from "../agentos/config/loader.js";
 import { readPresetBundleFile, writePresetBundleFile } from "../agentos/config/store.js";
 import { inspectPreset, listPresets } from "../agentos/registry/preset-utils.js";
 import { readRoleBundleJson, writeRoleBundleJson } from "../agentos/registry/role-io.js";
@@ -20,6 +23,7 @@ import type {
   RoleBundle,
   RoleTemplate,
   RuntimeAgent,
+  SessionReplay,
 } from "../agentos/types.js";
 
 const rawArgv = process.argv.slice(2).filter((arg, index) => !(index === 0 && arg === "--"));
@@ -90,6 +94,11 @@ interface MemorySummary {
   latestAt?: string;
 }
 
+interface WorkspaceGuideRow {
+  file: string;
+  purpose: string;
+}
+
 function getArg(name: string): string | undefined {
   const index = argv.findIndex((arg) => arg === `--${name}`);
   return index >= 0 ? argv[index + 1] : undefined;
@@ -133,6 +142,53 @@ function buildMemorySummary(rows: Array<{ layer: string; createdAt: string }>): 
     byLayer,
     latestAt: rows[0]?.createdAt,
   };
+}
+
+function defaultWorkspaceDir(cwd = process.cwd()): string {
+  return path.join(resolveAgentOsDataDir(cwd), "workspace");
+}
+
+function buildWorkspaceGuide(workspaceDir: string): WorkspaceGuideRow[] {
+  return [
+    {
+      file: path.join(workspaceDir, "AGENTS.md"),
+      purpose: "Global operating rules, task boundaries, and non-negotiable constraints.",
+    },
+    {
+      file: path.join(workspaceDir, "SOUL.md"),
+      purpose: "Persona, tone, and collaboration style shared across the agent surface.",
+    },
+    {
+      file: path.join(workspaceDir, "IDENTITY.md"),
+      purpose: "Public-facing agent name, style, and presentation details.",
+    },
+    {
+      file: path.join(workspaceDir, "USER.md"),
+      purpose: "Operator preferences, default assumptions, and user-specific context.",
+    },
+    {
+      file: path.join(workspaceDir, "TOOLS.md"),
+      purpose: "Local tool notes, machine facts, and environment-specific guidance.",
+    },
+    {
+      file: path.join(workspaceDir, "BOOTSTRAP.md"),
+      purpose: "First-run ritual for a brand-new workspace; removed after onboarding completes.",
+    },
+  ];
+}
+
+function sessionReplaySummary(replay: SessionReplay): string[] {
+  const lines = [
+    `session: ${replay.sessionId}`,
+    `status: ${replay.status}`,
+    `updatedAt: ${replay.updatedAt}`,
+    `turns: ${replay.turns.length}`,
+    `lastConclusion: ${replay.lastConclusion ?? "n/a"}`,
+  ];
+  if (replay.lastSelectedRoles.length > 0) {
+    lines.push(`lastSelectedRoles: ${replay.lastSelectedRoles.join(", ")}`);
+  }
+  return lines;
 }
 
 function emitSuccess<T>(payload: EnvelopeInput<T>, human?: () => void): void {
@@ -388,6 +444,7 @@ async function runCommand() {
         console.log(`routeSummary: ${result.routeSummary}`);
         console.log(`selectedRoles: ${result.selectedRoles.join(", ")}`);
         console.log(`executionMode: ${result.executionMode}`);
+        console.log(`memoryHits: ${result.memoryContext.hits.length}`);
         console.log(`selectionReasons: ${result.selectionReasons.join(" | ")}`);
         console.log(`conclusion: ${result.conclusion}`);
         console.log(`plan[0]: ${result.plan[0] ?? "n/a"}`);
@@ -407,6 +464,12 @@ async function chatCommand() {
   const rl = readline.createInterface({ input, output });
   console.log("Vclaw AgentOS chat mode. Type 'exit' to quit.");
   try {
+    const replay = await runtime.sessionStore.inspect(sessionId, 4);
+    if (replay.turns.length > 0) {
+      console.log(`resume: ${replay.turns.length} prior turn(s) found for session ${sessionId}`);
+      console.log(`lastConclusion: ${replay.lastConclusion ?? "n/a"}`);
+      console.log(`lastSelectedRoles: ${replay.lastSelectedRoles.join(", ") || "n/a"}`);
+    }
     while (true) {
       const line = (await rl.question("> ")).trim();
       if (line === "exit") {
@@ -426,6 +489,7 @@ async function chatCommand() {
       console.log(`routeSummary: ${result.routeSummary}`);
       console.log(`selectedRoles: ${result.selectedRoles.join(",")}`);
       console.log(`executionMode: ${result.executionMode}`);
+      console.log(`memoryHits: ${result.memoryContext.hits.length}`);
       console.log(`selectionReasons: ${result.selectionReasons.join(" | ")}`);
       console.log(`conclusion: ${result.conclusion}`);
     }
@@ -433,6 +497,76 @@ async function chatCommand() {
     rl.close();
     await runtime.storage.close();
   }
+}
+
+async function inspectSessionCommand() {
+  const runtime = await createAgentOsRuntime();
+  const sessionId = getArg("session") ?? "local-main";
+  const limit = parseIntSafe("limit", 6);
+  try {
+    const replay = await runtime.sessionStore.inspect(sessionId, limit);
+    emitSuccess(
+      {
+        command: "inspect-session",
+        result: replay,
+        metadata: { consistencyIssues: runtime.consistencyIssues },
+      },
+      () => {
+        for (const line of sessionReplaySummary(replay)) {
+          console.log(line);
+        }
+        console.table(
+          replay.turns.map((turn) => ({
+            taskId: turn.taskId,
+            status: turn.status,
+            roles: turn.selectedRoles.join(","),
+            updatedAt: turn.updatedAt,
+            goal: turn.goal.slice(0, 60),
+            conclusion: (turn.conclusion ?? "").slice(0, 80),
+          })),
+        );
+      },
+    );
+  } finally {
+    await runtime.storage.close();
+  }
+}
+
+async function setupWorkspaceCommand() {
+  const requested = getArg("workspace") ?? defaultWorkspaceDir();
+  const workspaceDir = path.resolve(requested);
+  const workspace = await ensureAgentWorkspace({
+    dir: workspaceDir,
+    ensureBootstrapFiles: true,
+  });
+  const guide = buildWorkspaceGuide(workspace.dir);
+  emitSuccess(
+    {
+      command: "setup-workspace",
+      result: {
+        workspaceDir: workspace.dir,
+        files: guide,
+        next: [
+          "Edit AGENTS.md for operating rules and hard boundaries.",
+          "Edit SOUL.md and IDENTITY.md for persona and voice.",
+          "Edit USER.md and TOOLS.md for operator context and machine-specific notes.",
+          "Run pnpm vclaw:agentos -- inspect-session --session local-main --json after your first task.",
+        ],
+      },
+      metadata: {
+        generatedAt: nowIso(),
+      },
+    },
+    () => {
+      console.log(`workspace: ${workspace.dir}`);
+      console.table(guide);
+      console.log("next:");
+      console.log("- Edit AGENTS.md for operating rules and hard boundaries.");
+      console.log("- Edit SOUL.md and IDENTITY.md for persona and voice.");
+      console.log("- Edit USER.md and TOOLS.md for operator context and machine-specific notes.");
+      console.log("- Run pnpm vclaw:agentos -- demo --json to validate the workspace.");
+    },
+  );
 }
 
 async function inspectMemoryCommand() {
@@ -1136,6 +1270,8 @@ async function main() {
         '  run --goal "implement role-based routing" --preset default-demo',
         "  list-roles",
         "  inspect-memory --session demo-main",
+        "  inspect-session --session demo-main",
+        "  setup-workspace --workspace .vclaw/workspace",
         "",
         "Commands:",
         "  demo [--goal <text>] [--preset <id>] [--session <id>]",
@@ -1164,6 +1300,8 @@ async function main() {
         "  import-preset --file <path.json> [--overwrite true|false]",
         "  validate-preset --id <presetId> | --file <path.json>",
         "  inspect-memory [--session <id>] [--layer short-term|long-term|project-entity]",
+        "  inspect-session [--session <id>] [--limit <number>]",
+        "  setup-workspace [--workspace <dir>]",
         "  vclaw-run --task <text> [--allow-write true|false] [--vclaw-bin <path>] [--vclaw-config <path>] [--timeout-ms <number>]",
         "",
         "JSON mode:",
@@ -1176,6 +1314,8 @@ async function main() {
         "  pnpm vclaw:agentos -- run --goal \"investigate issue\" --task-type research --required-capabilities research,review --preset \"\" --json",
         "  pnpm vclaw:agentos -- run --goal \"produce a competitive report\" --task-type research --deerflow true --deerflow-mode ultra --json",
         "  pnpm vclaw:agentos -- inspect-memory --session demo-main --json",
+        "  pnpm vclaw:agentos -- inspect-session --session demo-main --json",
+        "  pnpm vclaw:agentos -- setup-workspace --workspace .vclaw/workspace --json",
         "  pnpm vclaw:agentos -- vclaw-run --task \"scan workspace and summarize risks\" --json",
         "",
         "Exit codes:",
@@ -1202,6 +1342,12 @@ async function main() {
       return;
     case "inspect-memory":
       await inspectMemoryCommand();
+      return;
+    case "inspect-session":
+      await inspectSessionCommand();
+      return;
+    case "setup-workspace":
+      await setupWorkspaceCommand();
       return;
     case "list-roles":
       await listRolesCommand();
