@@ -2,11 +2,11 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Deliver a single-command Vclaw bootstrap flow that checks the environment, installs missing dependencies, updates or clones the repo into `E:\Vclaw`, preserves the current onboarding UI, and leaves the system ready to run.
+**Goal:** Deliver single-command Vclaw bootstrap flows for Windows, macOS, and Linux that check the environment, install missing dependencies, update or clone the repo into the platform-default target path, preserve the current onboarding UI, and leave the system ready to run.
 
-**Architecture:** Reuse the existing installer/runtime entrypoints where they are already stable, then add a Windows-first bootstrap layer that owns machine prep, directory migration, wrapper creation, and smoke verification. Keep Vclaw as the operator-facing name while avoiding risky changes to the current onboarding experience.
+**Architecture:** Reuse the existing installer/runtime entrypoints where they are already stable, then add thin bootstrap layers per platform that own machine prep, directory migration, wrapper creation, and smoke verification. Keep Vclaw as the operator-facing name while avoiding risky changes to the current onboarding experience.
 
-**Tech Stack:** PowerShell, Node.js 22, pnpm/Corepack, existing Vclaw CLI scripts, Git
+**Tech Stack:** PowerShell, Bash, Node.js 22, pnpm/Corepack, existing Vclaw CLI scripts, Git
 
 ---
 
@@ -151,7 +151,57 @@ vclaw --help
 agentos demo
 ```
 
-### Task 5: Execute the folder migration and final validation
+### Task 5: Implement the macOS/Linux bootstrap script
+
+**Files:**
+- Create: `scripts/vclaw-bootstrap.sh`
+- Create: `test/agentos/vclaw-bootstrap-shell.contract.test.ts`
+- Modify: `README.md`
+- Modify: `docs/install/installer.md`
+
+**Step 1: Define the Unix contract**
+
+Bootstrap command:
+
+```bash
+bash ./scripts/vclaw-bootstrap.sh
+```
+
+Default paths:
+
+- target checkout: `~/Vclaw`
+- archive folder: `~/Vclaw-go-unfinished`
+- wrapper dir: `~/.local/bin`
+
+**Step 2: Implement environment preparation**
+
+Ensure:
+
+- `git`
+- Node.js `>= 22.12.0`
+- Corepack enabled when available
+- `pnpm@10.23.0`
+
+**Step 3: Implement repo sync and wrapper creation**
+
+Behavior:
+
+- archive an occupied non-repo target directory
+- clone or update `https://github.com/zylzyqzz/Vclaw.git`
+- run `pnpm install`
+- create `vclaw` and `agentos` shell wrappers
+- add the wrapper directory to the shell rc files when needed
+
+**Step 4: Add focused contract coverage**
+
+Verify that the script content includes:
+
+- repo URL
+- target path constants
+- wrapper generation
+- smoke verification commands
+
+### Task 6: Execute the folder migration and final validation
 
 **Files:**
 - Modify: filesystem directories on `E:\`
@@ -168,7 +218,7 @@ Apply:
 Run:
 
 ```powershell
-pnpm exec vitest run test/agentos/vclaw-bootstrap.contract.test.ts test/agentos/readme-smoke.test.ts
+pnpm exec vitest run test/agentos/vclaw-bootstrap.contract.test.ts test/agentos/vclaw-bootstrap-shell.contract.test.ts test/agentos/readme-smoke.test.ts
 pnpm vclaw -- help
 pnpm vclaw:agentos -- demo
 ```

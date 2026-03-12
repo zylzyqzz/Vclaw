@@ -71,7 +71,7 @@ When onboarding finishes, we auto-open the dashboard and print a clean (non-toke
 
 OpenClaw reads operating instructions and “memory” from its workspace directory.
 
-By default, OpenClaw uses `~/.openclaw/workspace` as the agent workspace, and will create it (plus starter `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `IDENTITY.md`, `USER.md`, `HEARTBEAT.md`) automatically on setup/first agent run. `BOOTSTRAP.md` is only created when the workspace is brand new (it should not come back after you delete it). `MEMORY.md` is optional (not auto-created); when present, it is loaded for normal sessions. Subagent sessions only inject `AGENTS.md` and `TOOLS.md`.
+By default, OpenClaw uses `~/.openclaw/workspace` as the agent workspace, and will create it (plus starter `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `IDENTITY.md`, `USER.md`, `HEARTBEAT.md`, `MEMORY.md`, and `memory/YYYY-MM-DD.md`) automatically on setup/first agent run. `BOOTSTRAP.md` is only created when the workspace is brand new (it should not come back after you delete it). `MEMORY.md` is loaded for normal sessions, while subagent sessions only inject `AGENTS.md` and `TOOLS.md`.
 
 Tip: treat this folder like OpenClaw’s “memory” and make it a git repo (ideally private) so your `AGENTS.md` + memory files are backed up. If git is installed, brand-new workspaces are auto-initialized.
 
@@ -147,6 +147,15 @@ Example:
   },
 }
 ```
+
+If your primary model regularly hangs near the default `agents.defaults.timeoutSeconds: 600`,
+decide intentionally:
+
+- keep the slow model as primary and increase `timeoutSeconds` if it usually succeeds eventually
+- or move to a faster primary and keep the slower model in `agents.defaults.model.fallbacks`
+- or lower `timeoutSeconds` so timeout-based failover happens sooner
+
+Model fallback order is documented in [Model failover](/concepts/model-failover).
 
 ## Sessions and memory
 

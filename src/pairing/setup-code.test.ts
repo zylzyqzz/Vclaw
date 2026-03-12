@@ -416,4 +416,25 @@ describe("pairing setup code", () => {
     });
     expect(runCommandWithTimeout).not.toHaveBeenCalled();
   });
+
+  it("fails closed when network interface inspection throws during LAN resolution", async () => {
+    const resolved = await resolvePairingSetupFromConfig(
+      {
+        gateway: {
+          bind: "lan",
+          auth: { mode: "token", token: "tok_123" },
+        },
+      },
+      {
+        networkInterfaces: () => {
+          throw new Error("sandbox denied");
+        },
+      },
+    );
+
+    expect(resolved).toEqual({
+      ok: false,
+      error: "gateway.bind=lan set, but no private LAN IP was found.",
+    });
+  });
 });

@@ -139,6 +139,9 @@ See [Plugins](/tools/plugin#plugin-hooks) for the hook API and registration deta
 
 - `agent.wait` default: 30s (just the wait). `timeoutMs` param overrides.
 - Agent runtime: `agents.defaults.timeoutSeconds` default 600s; enforced in `runEmbeddedPiAgent` abort timer.
+- If a primary model stalls, timeout-based failover only happens after the current attempt times out.
+  Tune `agents.defaults.timeoutSeconds`, `agents.defaults.model.primary`, and
+  `agents.defaults.model.fallbacks` together so the runtime matches your latency goals.
 
 ## Where things can end early
 

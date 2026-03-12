@@ -101,10 +101,12 @@ These are the standard files OpenClaw expects inside the workspace:
 
 - `memory/YYYY-MM-DD.md`
   - Daily memory log (one file per day).
+  - Fresh workspaces seed today's file automatically.
   - Recommended to read today + yesterday on session start.
 
-- `MEMORY.md` (optional)
+- `MEMORY.md`
   - Curated long-term memory.
+  - Fresh workspaces seed a starter version automatically.
   - Only load in the main, private session (not shared/group contexts).
 
 See [Memory](/concepts/memory) for the workflow and automatic memory flush.

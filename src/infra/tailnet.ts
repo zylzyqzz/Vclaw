@@ -9,6 +9,14 @@ export type TailnetAddresses = {
 const TAILNET_IPV4_CIDR = "100.64.0.0/10";
 const TAILNET_IPV6_CIDR = "fd7a:115c:a1e0::/48";
 
+function safeNetworkInterfaces(): ReturnType<typeof os.networkInterfaces> {
+  try {
+    return os.networkInterfaces();
+  } catch {
+    return {};
+  }
+}
+
 export function isTailnetIPv4(address: string): boolean {
   // Tailscale IPv4 range: 100.64.0.0/10
   // https://tailscale.com/kb/1015/100.x-addresses
@@ -25,7 +33,7 @@ export function listTailnetAddresses(): TailnetAddresses {
   const ipv4: string[] = [];
   const ipv6: string[] = [];
 
-  const ifaces = os.networkInterfaces();
+  const ifaces = safeNetworkInterfaces();
   for (const entries of Object.values(ifaces)) {
     if (!entries) {
       continue;

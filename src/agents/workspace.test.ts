@@ -1,14 +1,16 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { makeTempWorkspace, writeWorkspaceFile } from "../test-helpers/workspace.js";
 import {
   DEFAULT_AGENTS_FILENAME,
   DEFAULT_BOOTSTRAP_FILENAME,
+  DEFAULT_HEARTBEAT_FILENAME,
   DEFAULT_IDENTITY_FILENAME,
   DEFAULT_MEMORY_ALT_FILENAME,
   DEFAULT_MEMORY_FILENAME,
+  DEFAULT_SOUL_FILENAME,
   DEFAULT_TOOLS_FILENAME,
   DEFAULT_USER_FILENAME,
   ensureAgentWorkspace,
@@ -72,13 +74,27 @@ function expectSubagentAllowedBootstrapNames(files: WorkspaceBootstrapFile[]) {
 }
 
 describe("ensureAgentWorkspace", () => {
-  it("creates BOOTSTRAP.md and records a seeded marker for brand new workspaces", async () => {
+  it("creates the full bootstrap file set and records a seeded marker for brand new workspaces", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-12T08:00:00Z"));
     const tempDir = await makeTempWorkspace("openclaw-workspace-");
 
-    await ensureAgentWorkspace({ dir: tempDir, ensureBootstrapFiles: true });
+    try {
+      await ensureAgentWorkspace({ dir: tempDir, ensureBootstrapFiles: true });
 
-    await expectBootstrapSeeded(tempDir);
-    expect((await readOnboardingState(tempDir)).onboardingCompletedAt).toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_AGENTS_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_SOUL_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_TOOLS_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_IDENTITY_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_USER_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_HEARTBEAT_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, DEFAULT_MEMORY_FILENAME))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(tempDir, "memory", "2026-03-12.md"))).resolves.toBeUndefined();
+      await expectBootstrapSeeded(tempDir);
+      expect((await readOnboardingState(tempDir)).onboardingCompletedAt).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("recovers partial initialization by creating BOOTSTRAP.md when marker is missing", async () => {

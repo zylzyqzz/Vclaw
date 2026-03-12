@@ -9,12 +9,20 @@ import {
   normalizeIpAddress,
 } from "../shared/net/ip.js";
 
+function safeNetworkInterfaces(): ReturnType<typeof os.networkInterfaces> {
+  try {
+    return os.networkInterfaces();
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Pick the primary non-internal IPv4 address (LAN IP).
  * Prefers common interface names (en0, eth0) then falls back to any external IPv4.
  */
 export function pickPrimaryLanIPv4(): string | undefined {
-  const nets = os.networkInterfaces();
+  const nets = safeNetworkInterfaces();
   const preferredNames = ["en0", "eth0"];
   for (const name of preferredNames) {
     const list = nets[name];

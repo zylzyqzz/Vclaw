@@ -1,11 +1,15 @@
 param(
   [string]$RepoUrl = "https://github.com/zylzyqzz/Vclaw.git",
+  [string]$DeerFlowRepoUrl = "https://github.com/bytedance/deer-flow.git",
   [string]$TargetDir = "E:\Vclaw",
-  [string]$LegacyGoArchiveDir = "E:\Vclaw(Go语言未完成）",
+  [string]$LegacyGoArchiveDir = "E:\Vclaw-Go-unfinished",
   [string]$PnpmVersion = "10.23.0",
   [string]$WrapperDir = "$env:USERPROFILE\.local\bin",
+  [string]$DeerFlowMode = "ultra",
   [switch]$NoGitUpdate,
+  [switch]$NoDeerFlow,
   [switch]$NoOnboard,
+  [switch]$KeepDeerFlowConfig,
   [switch]$DryRun
 )
 
@@ -17,6 +21,8 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $script:TargetDir = [System.IO.Path]::GetFullPath($TargetDir)
 $script:LegacyGoArchiveDir = [System.IO.Path]::GetFullPath($LegacyGoArchiveDir)
 $script:WrapperDir = [System.IO.Path]::GetFullPath($WrapperDir)
+$script:DeerFlowDir = Join-Path $script:TargetDir ".vclaw\deerflow"
+$script:DeerFlowRuntimePath = Join-Path $script:DeerFlowDir "runtime.json"
 $script:NodeMinMajor = 22
 $script:NodeMinMinor = 12
 
@@ -49,6 +55,18 @@ function Invoke-Step {
   & $Action
 }
 
+function Refresh-Path {
+  $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+  $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+  $candidates = @(
+    $machinePath,
+    $userPath,
+    (Join-Path $env:USERPROFILE ".local\bin"),
+    $script:WrapperDir
+  ) | Where-Object { $_ -and $_.Trim().Length -gt 0 }
+  $env:Path = ($candidates -join ";")
+}
+
 function Test-VclawCheckout {
   param([string]$Path)
 
@@ -64,6 +82,132 @@ function Test-VclawCheckout {
       (Test-Path (Join-Path $Path "scripts\run-node.mjs"))
     )
   )
+}
+
+function Test-DeerFlowCheckout {
+  param([string]$Path)
+
+  if (-not (Test-Path $Path)) {
+    return $false
+  }
+
+  return (
+    (Test-Path (Join-Path $Path ".git")) -or
+    (
+      (Test-Path (Join-Path $Path "backend\pyproject.toml")) -and
+      (Test-Path (Join-Path $Path "backend\src\client.py"))
+    )
+  )
+}
+
+function Test-LoopbackProxyValue {
+  param([string]$Value)
+
+  if (-not $Value) {
+    return $false
+  }
+
+  return $Value -match "127\.0\.0\.1" -or $Value -match "localhost"
+}
+
+function Get-ProxyHints {
+  $values = @()
+
+  try {
+    $globalHttp = (git config --global --get http.proxy 2>$null)
+    if ($globalHttp) {
+      $values += $globalHttp.Trim()
+    }
+  } catch {
+  }
+
+  try {
+    $globalHttps = (git config --global --get https.proxy 2>$null)
+    if ($globalHttps) {
+      $values += $globalHttps.Trim()
+    }
+  } catch {
+  }
+
+  foreach ($name in @("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy")) {
+    $value = [System.Environment]::GetEnvironmentVariable($name)
+    if ($value) {
+      $values += $value.Trim()
+    }
+  }
+
+  return $values | Where-Object { $_ -and $_.Length -gt 0 } | Select-Object -Unique
+}
+
+function Remove-PathIfPresent {
+  param([string]$Path)
+
+  if (-not (Test-Path $Path)) {
+    return
+  }
+
+  Remove-Item -LiteralPath $Path -Recurse -Force
+}
+
+function Invoke-GitCloneWithRetry {
+  param(
+    [string]$RepoUrl,
+    [string]$Destination,
+    [string]$Label,
+    [scriptblock]$CheckoutValidator
+  )
+
+  if ($DryRun) {
+    Write-Info "[dry-run] git clone $RepoUrl $Destination"
+    return
+  }
+
+  & git clone $RepoUrl $Destination
+  $firstExit = $LASTEXITCODE
+  if ($firstExit -eq 0 -and (& $CheckoutValidator $Destination)) {
+    return
+  }
+
+  $loopbackProxyHints = @(Get-ProxyHints | Where-Object { Test-LoopbackProxyValue $_ })
+  if ($loopbackProxyHints.Count -eq 0) {
+    throw "$Label clone failed with exit code $firstExit."
+  }
+
+  Write-WarnLine "$Label clone failed while a local proxy is configured. Retrying without proxy."
+  Write-Info ("Proxy hints: " + ($loopbackProxyHints -join ", "))
+
+  Remove-PathIfPresent $Destination
+
+  $savedEnv = @{
+    HttpProxyUpper = $env:HTTP_PROXY
+    HttpsProxyUpper = $env:HTTPS_PROXY
+    AllProxyUpper = $env:ALL_PROXY
+    HttpProxyLower = $env:http_proxy
+    HttpsProxyLower = $env:https_proxy
+    AllProxyLower = $env:all_proxy
+  }
+
+  try {
+    $env:HTTP_PROXY = $null
+    $env:HTTPS_PROXY = $null
+    $env:ALL_PROXY = $null
+    $env:http_proxy = $null
+    $env:https_proxy = $null
+    $env:all_proxy = $null
+
+    & git -c http.proxy= -c https.proxy= clone $RepoUrl $Destination
+    $retryExit = $LASTEXITCODE
+    if ($retryExit -ne 0 -or -not (& $CheckoutValidator $Destination)) {
+      throw "$Label clone failed after retrying without proxy."
+    }
+  } finally {
+    $env:HTTP_PROXY = $savedEnv.HttpProxyUpper
+    $env:HTTPS_PROXY = $savedEnv.HttpsProxyUpper
+    $env:ALL_PROXY = $savedEnv.AllProxyUpper
+    $env:http_proxy = $savedEnv.HttpProxyLower
+    $env:https_proxy = $savedEnv.HttpsProxyLower
+    $env:all_proxy = $savedEnv.AllProxyLower
+  }
 }
 
 function Get-NodeVersion {
@@ -93,12 +237,6 @@ function Test-NodeVersionSupported {
   $major = [int]$parts[0]
   $minor = [int]$parts[1]
   return ($major -gt $script:NodeMinMajor) -or ($major -eq $script:NodeMinMajor -and $minor -ge $script:NodeMinMinor)
-}
-
-function Refresh-Path {
-  $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-  $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
-  $env:Path = @($machinePath, $userPath) -join ";"
 }
 
 function Ensure-ExecutionPolicy {
@@ -219,6 +357,41 @@ function Ensure-CorepackAndPnpm {
   }
 }
 
+function Ensure-Uv {
+  if (Get-Command uv -ErrorAction SilentlyContinue) {
+    Write-Step "uv ready"
+    return
+  }
+
+  Write-Step "Installing uv"
+  Invoke-Step "Install uv via Astral installer" {
+    Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+    Refresh-Path
+  }
+
+  if (-not $DryRun -and -not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv was not found after installation."
+  }
+}
+
+function Ensure-DeerFlowPython {
+  Write-Step "Preparing Python 3.12 for DeerFlow"
+  Invoke-Step "uv python install 3.12" {
+    uv python install 3.12
+  }
+
+  if ($DryRun) {
+    return "python"
+  }
+
+  $pythonBin = (uv python find 3.12).Trim()
+  if (-not $pythonBin) {
+    throw "uv python find 3.12 did not return a Python runtime."
+  }
+
+  return $pythonBin
+}
+
 function Ensure-ArchiveSlot {
   if (-not (Test-Path $script:TargetDir)) {
     return
@@ -266,7 +439,55 @@ function Ensure-RepoCheckout {
 
   Write-Step "Cloning Vclaw repository"
   Invoke-Step "git clone $RepoUrl $script:TargetDir" {
-    git clone $RepoUrl $script:TargetDir
+    Invoke-GitCloneWithRetry -RepoUrl $RepoUrl -Destination $script:TargetDir -Label "Vclaw repository" -CheckoutValidator {
+      param($Path)
+      Test-VclawCheckout $Path
+    }
+  }
+}
+
+function Ensure-DeerFlowCheckout {
+  $parent = Split-Path -Parent $script:DeerFlowDir
+  if (-not (Test-Path $parent)) {
+    Invoke-Step "Create DeerFlow parent directory $parent" {
+      New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+  }
+
+  if ((Test-Path $script:DeerFlowDir) -and -not (Test-DeerFlowCheckout $script:DeerFlowDir)) {
+    $archive = "$script:DeerFlowDir.stale-$(Get-Date -Format yyyyMMddHHmmss)"
+    Write-WarnLine "Existing DeerFlow directory is not a valid checkout; moving it to $archive"
+    Invoke-Step "Move stale DeerFlow directory to $archive" {
+      Move-Item -LiteralPath $script:DeerFlowDir -Destination $archive
+    }
+  }
+
+  if (Test-DeerFlowCheckout $script:DeerFlowDir) {
+    Write-Step "DeerFlow checkout ready at $script:DeerFlowDir"
+    if (-not $NoGitUpdate -and (Test-Path (Join-Path $script:DeerFlowDir ".git"))) {
+      $status = git -C $script:DeerFlowDir status --porcelain 2>$null
+      if (-not $status) {
+        Write-Step "Updating DeerFlow repository"
+        Invoke-Step "git -C $script:DeerFlowDir pull --rebase" {
+          git -C $script:DeerFlowDir pull --rebase
+        }
+      } else {
+        Write-WarnLine "Local DeerFlow checkout has changes; skipping git pull"
+      }
+    }
+    return
+  }
+
+  Write-Step "Cloning DeerFlow repository"
+  Invoke-Step "git clone $DeerFlowRepoUrl $script:DeerFlowDir" {
+    Invoke-GitCloneWithRetry -RepoUrl $DeerFlowRepoUrl -Destination $script:DeerFlowDir -Label "DeerFlow repository" -CheckoutValidator {
+      param($Path)
+      Test-DeerFlowCheckout $Path
+    }
+  }
+
+  if (-not (Test-DeerFlowCheckout $script:DeerFlowDir)) {
+    throw "DeerFlow checkout is missing or incomplete after clone."
   }
 }
 
@@ -347,6 +568,44 @@ function Install-WorkspaceDependencies {
   }
 }
 
+function Install-DeerFlowDependencies {
+  param([string]$PythonBin)
+
+  if (-not (Test-DeerFlowCheckout $script:DeerFlowDir)) {
+    throw "DeerFlow checkout is not ready. Dependency installation was stopped before entering backend."
+  }
+
+  Write-Step "Installing DeerFlow backend dependencies"
+  Invoke-Step "uv sync --python $PythonBin" {
+    Push-Location (Join-Path $script:DeerFlowDir "backend")
+    try {
+      uv sync --python $PythonBin
+    } finally {
+      Pop-Location
+    }
+  }
+
+  Write-Step "Configuring DeerFlow runtime metadata ($script:DeerFlowRuntimePath)"
+  Invoke-Step "node scripts\\bootstrap\\configure-deerflow.mjs" {
+    Push-Location $script:TargetDir
+    try {
+      $args = @(
+        "scripts\bootstrap\configure-deerflow.mjs",
+        "--vclaw-root", $script:TargetDir,
+        "--deerflow-root", $script:DeerFlowDir,
+        "--python-bin", $PythonBin,
+        "--mode", $DeerFlowMode
+      )
+      if ($KeepDeerFlowConfig) {
+        $args += "--keep-config"
+      }
+      node @args | Out-Null
+    } finally {
+      Pop-Location
+    }
+  }
+}
+
 function Invoke-SmokeVerification {
   Write-Step "Running smoke verification"
   Invoke-Step "pnpm vclaw -- help" {
@@ -366,6 +625,17 @@ function Invoke-SmokeVerification {
       Pop-Location
     }
   }
+
+  if (-not $NoDeerFlow) {
+    Invoke-Step "pnpm vclaw:agentos -- run --goal `"research competitive landscape`" --task-type research --json" {
+      Push-Location $script:TargetDir
+      try {
+        pnpm vclaw:agentos -- run --goal "research competitive landscape" --task-type research --json | Out-Null
+      } finally {
+        Pop-Location
+      }
+    }
+  }
 }
 
 function Show-Summary {
@@ -373,10 +643,16 @@ function Show-Summary {
   Write-Host "Vclaw bootstrap complete." -ForegroundColor Green
   Write-Host "Repo: $script:TargetDir" -ForegroundColor DarkGray
   Write-Host "Wrappers: $script:WrapperDir" -ForegroundColor DarkGray
+  if (-not $NoDeerFlow) {
+    Write-Host "DeerFlow: $script:DeerFlowDir" -ForegroundColor DarkGray
+  }
   Write-Host ""
   Write-Host "Ready commands:" -ForegroundColor Cyan
   Write-Host "  vclaw --help" -ForegroundColor DarkGray
   Write-Host "  agentos demo" -ForegroundColor DarkGray
+  if (-not $NoDeerFlow) {
+    Write-Host "  agentos run --goal `"research competitive landscape`" --task-type research --json" -ForegroundColor DarkGray
+  }
   if (-not $NoOnboard) {
     Write-Host "  vclaw onboard" -ForegroundColor DarkGray
   }
@@ -385,6 +661,7 @@ function Show-Summary {
 function Main {
   Write-Step "Checking environment"
   Ensure-ExecutionPolicy
+  Refresh-Path
   Ensure-Git
   Ensure-Node
   Ensure-CorepackAndPnpm
@@ -396,8 +673,16 @@ function Main {
   Write-Step "Installing Vclaw"
   Install-WorkspaceDependencies
   Ensure-Wrappers
-  Invoke-SmokeVerification
 
+  if (-not $NoDeerFlow) {
+    Write-Step "Installing DeerFlow sidecar"
+    Ensure-Uv
+    $pythonBin = Ensure-DeerFlowPython
+    Ensure-DeerFlowCheckout
+    Install-DeerFlowDependencies -PythonBin $pythonBin
+  }
+
+  Invoke-SmokeVerification
   Show-Summary
 }
 

@@ -26,8 +26,25 @@ That Windows-first bootstrap command:
 - creates `vclaw.cmd` and `agentos.cmd` wrappers
 - verifies the install with CLI smoke commands
 
+For the current local Vclaw workspace on macOS and Linux, the matching one-command bootstrap is:
+
+```bash
+bash ./scripts/vclaw-bootstrap.sh
+```
+
+That Unix bootstrap command:
+
+- checks `git`, Node.js, Corepack, and `pnpm`
+- installs missing tools through `brew` or the detected Linux package manager when possible
+- archives a non-repo `~/Vclaw` folder to `~/Vclaw-go-unfinished`
+- updates or clones the repo into `~/Vclaw`
+- runs `pnpm install`
+- creates `vclaw` and `agentos` wrappers in `~/.local/bin`
+- verifies the install with CLI smoke commands
+
 | Script                             | Platform             | What it does                                                                                 |
 | ---------------------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| [`vclaw-bootstrap.sh`](#vclaw-bootstrapsh) | macOS / Linux        | Checks the host, installs missing tooling, syncs `~/Vclaw`, writes wrappers, and smoke-tests. |
 | [`install.sh`](#installsh)         | macOS / Linux / WSL  | Installs Node if needed, installs OpenClaw via npm (default) or git, and can run onboarding. |
 | [`install-cli.sh`](#install-clish) | macOS / Linux / WSL  | Installs Node + OpenClaw into a local prefix (`~/.openclaw`). No root required.              |
 | [`install.ps1`](#installps1)       | Windows (PowerShell) | Installs Node if needed, installs OpenClaw via npm (default) or git, and can run onboarding. |
@@ -70,6 +87,89 @@ That Windows-first bootstrap command:
 <Note>
 If install succeeds but `openclaw` is not found in a new terminal, see [Node.js troubleshooting](/install/node#troubleshooting).
 </Note>
+
+---
+
+## vclaw-bootstrap.sh
+
+<Tip>
+Recommended for the current Vclaw source workspace on macOS and Linux when you want the same
+"one command, everything done" flow that Windows already has.
+</Tip>
+
+### Flow (vclaw-bootstrap.sh)
+
+<Steps>
+  <Step title="Detect OS and package manager">
+    Supports macOS and Linux. Uses Homebrew on macOS and the detected system package manager on
+    Linux.
+  </Step>
+  <Step title="Ensure Git and Node.js 22.12+">
+    Installs missing tooling when supported installers are available, then activates
+    `pnpm@10.23.0`.
+  </Step>
+  <Step title="Prepare checkout">
+    If `~/Vclaw` contains a non-repo folder, archives it to `~/Vclaw-go-unfinished`, then clones
+    or updates `https://github.com/zylzyqzz/Vclaw.git`.
+  </Step>
+  <Step title="Install and verify">
+    Runs `pnpm install`, writes `vclaw` and `agentos` wrappers to `~/.local/bin`, updates shell
+    rc files to expose that path, and runs CLI smoke checks.
+  </Step>
+</Steps>
+
+### Examples (vclaw-bootstrap.sh)
+
+<Tabs>
+  <Tab title="Default">
+    ```bash
+    bash ./scripts/vclaw-bootstrap.sh
+    ```
+  </Tab>
+  <Tab title="Dry run">
+    ```bash
+    bash ./scripts/vclaw-bootstrap.sh --dry-run
+    ```
+  </Tab>
+  <Tab title="Custom target dir">
+    ```bash
+    bash ./scripts/vclaw-bootstrap.sh --target-dir /opt/Vclaw --wrapper-dir /opt/Vclaw/bin
+    ```
+  </Tab>
+</Tabs>
+
+<AccordionGroup>
+  <Accordion title="Flags reference">
+
+| Flag                  | Description                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| `--repo-url <url>`    | Override the git repo to clone or update                         |
+| `--target-dir <path>` | Checkout directory (default: `~/Vclaw`)                          |
+| `--archive-dir <path>` | Archive directory when target is occupied (default: `~/Vclaw-go-unfinished`) |
+| `--pnpm-version <v>`  | pnpm version to activate (default: `10.23.0`)                    |
+| `--wrapper-dir <path>` | Directory for the `vclaw` and `agentos` wrappers                 |
+| `--no-git-update`     | Skip `git pull --rebase` when the checkout already exists        |
+| `--no-onboard`        | Preserve current onboarding behavior and do not launch it        |
+| `--dry-run`           | Print actions without applying changes                           |
+| `--help`              | Show usage (`-h`)                                                |
+
+  </Accordion>
+
+  <Accordion title="Environment variables reference">
+
+| Variable                   | Description                                         |
+| -------------------------- | --------------------------------------------------- |
+| `VCLAW_REPO_URL=<url>`     | Override the repo to clone or update                |
+| `VCLAW_TARGET_DIR=<path>`  | Checkout directory                                  |
+| `VCLAW_ARCHIVE_DIR=<path>` | Archive directory for an occupied target            |
+| `VCLAW_PNPM_VERSION=<v>`   | pnpm version to activate                            |
+| `VCLAW_WRAPPER_DIR=<path>` | Wrapper directory                                   |
+| `VCLAW_NO_GIT_UPDATE=1`    | Skip `git pull --rebase`                            |
+| `VCLAW_NO_ONBOARD=1`       | Keep bootstrap non-interactive after install        |
+| `VCLAW_DRY_RUN=1`          | Dry run mode                                        |
+
+  </Accordion>
+</AccordionGroup>
 
 ---
 

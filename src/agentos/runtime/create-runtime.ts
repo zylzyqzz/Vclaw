@@ -1,4 +1,5 @@
 import { defaultOrchestratorConfig } from "../config/loader.js";
+import { DeerFlowEmbeddedBridge } from "../integration/deerflow-bridge.js";
 import { MemoryManager } from "../memory/memory-manager.js";
 import { Orchestrator } from "../orchestrator/orchestrator.js";
 import { AgentOsRepository } from "../repository/agentos-repository.js";
@@ -24,7 +25,8 @@ export async function createAgentOsRuntime(cwd = process.cwd()) {
 
   const sessionStore = new SessionStore(storage);
   const memory = new MemoryManager(storage);
-  const orchestrator = new Orchestrator(config, registry, sessionStore, memory);
+  const deerflow = new DeerFlowEmbeddedBridge(config.deerflow);
+  const orchestrator = new Orchestrator(config, registry, sessionStore, memory, deerflow);
 
   return {
     config,
@@ -33,6 +35,7 @@ export async function createAgentOsRuntime(cwd = process.cwd()) {
     repository,
     memory,
     sessionStore,
+    deerflow,
     orchestrator,
     consistencyIssues,
   };

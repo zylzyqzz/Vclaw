@@ -31,6 +31,7 @@ export const DEFAULT_HEARTBEAT_FILENAME = "HEARTBEAT.md";
 export const DEFAULT_BOOTSTRAP_FILENAME = "BOOTSTRAP.md";
 export const DEFAULT_MEMORY_FILENAME = "MEMORY.md";
 export const DEFAULT_MEMORY_ALT_FILENAME = "memory.md";
+const DEFAULT_MEMORY_DIRNAME = "memory";
 const WORKSPACE_STATE_DIRNAME = ".openclaw";
 const WORKSPACE_STATE_FILENAME = "workspace-state.json";
 const WORKSPACE_STATE_VERSION = 1;
@@ -203,6 +204,18 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+function formatWorkspaceMemoryDate(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildDailyMemorySeed(now: Date = new Date()): string {
+  const date = formatWorkspaceMemoryDate(now);
+  return `# ${date}\n\n- Workspace initialized. Add day-to-day notes here.\n`;
+}
+
 function resolveWorkspaceStatePath(dir: string): string {
   return path.join(dir, WORKSPACE_STATE_DIRNAME, WORKSPACE_STATE_FILENAME);
 }
@@ -346,6 +359,9 @@ export async function ensureAgentWorkspace(params?: {
   const userPath = path.join(dir, DEFAULT_USER_FILENAME);
   const heartbeatPath = path.join(dir, DEFAULT_HEARTBEAT_FILENAME);
   const bootstrapPath = path.join(dir, DEFAULT_BOOTSTRAP_FILENAME);
+  const memoryPath = path.join(dir, DEFAULT_MEMORY_FILENAME);
+  const altMemoryPath = path.join(dir, DEFAULT_MEMORY_ALT_FILENAME);
+  const memoryDirPath = path.join(dir, DEFAULT_MEMORY_DIRNAME);
   const statePath = resolveWorkspaceStatePath(dir);
 
   const isBrandNewWorkspace = await (async () => {
@@ -444,6 +460,19 @@ export async function ensureAgentWorkspace(params?: {
   if (stateDirty) {
     await writeWorkspaceOnboardingState(statePath, state);
   }
+
+  if (!state.onboardingCompletedAt) {
+    const hasPrimaryMemory = await fileExists(memoryPath);
+    const hasAltMemory = await fileExists(altMemoryPath);
+    if (!hasPrimaryMemory && !hasAltMemory) {
+      const memoryTemplate = await loadTemplate(DEFAULT_MEMORY_FILENAME);
+      await writeFileIfMissing(memoryPath, memoryTemplate);
+    }
+    await fs.mkdir(memoryDirPath, { recursive: true });
+    const todayMemoryPath = path.join(memoryDirPath, `${formatWorkspaceMemoryDate()}.md`);
+    await writeFileIfMissing(todayMemoryPath, buildDailyMemorySeed());
+  }
+
   await ensureGitRepo(dir, isBrandNewWorkspace);
 
   return {

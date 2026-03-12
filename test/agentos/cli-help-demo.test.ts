@@ -26,6 +26,7 @@ describe("agentos cli help and demo", () => {
       expect(help.stdout).toContain("Quick Start:");
       expect(help.stdout).toContain("demo");
       expect(help.stdout).toContain("list-agents (compat alias)");
+      expect(help.stdout).toContain("--deerflow-mode flash|standard|pro|ultra");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

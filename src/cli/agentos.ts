@@ -12,6 +12,7 @@ import type {
   AgentMemoryScope,
   AgentPolicy,
   CliEnvelope,
+  DeerFlowRequestOptions,
   LintResult,
   PresetDefinition,
   RoleBundle,
@@ -218,6 +219,37 @@ function buildMemoryScope(): AgentMemoryScope {
   };
 }
 
+function buildDeerFlowOptionsFromArgs(): DeerFlowRequestOptions | undefined {
+  const explicitEnabled = getArg("deerflow");
+  const mode = getArg("deerflow-mode") as DeerFlowRequestOptions["mode"] | undefined;
+  const pythonBin = getArg("deerflow-python");
+  const backendPath = getArg("deerflow-backend");
+  const configPath = getArg("deerflow-config");
+  const modelName = getArg("deerflow-model");
+
+  if (
+    !explicitEnabled &&
+    !mode &&
+    !pythonBin &&
+    !backendPath &&
+    !configPath &&
+    !modelName &&
+    !argv.includes("--deerflow-force")
+  ) {
+    return undefined;
+  }
+
+  return {
+    enabled: explicitEnabled ? explicitEnabled === "true" : undefined,
+    force: argv.includes("--deerflow-force"),
+    mode,
+    pythonBin,
+    backendPath,
+    configPath,
+    modelName,
+  };
+}
+
 function buildRoleTemplate(roleId: string): RoleTemplate {
   const ts = nowIso();
   const capabilities = getCsv("capabilities") as AgentCapability[];
@@ -316,6 +348,7 @@ async function runCommand() {
       requiredCapabilities: getCsv("required-capabilities") as AgentCapability[],
       preferredRoles: getCsv("preferred-roles"),
       excludedRoles: getCsv("excluded-roles"),
+      deerflow: buildDeerFlowOptionsFromArgs(),
     });
     emitSuccess(
       {
@@ -363,6 +396,7 @@ async function chatCommand() {
         goal: line,
         roles: roleList.length > 0 ? roleList : undefined,
         preset,
+        deerflow: buildDeerFlowOptionsFromArgs(),
       });
       console.log(`routeSummary: ${result.routeSummary}`);
       console.log(`selectedRoles: ${result.selectedRoles.join(",")}`);
@@ -429,6 +463,7 @@ async function demoCommand() {
       goal,
       preset,
       taskType: "review",
+      deerflow: buildDeerFlowOptionsFromArgs(),
     });
     emitSuccess(
       {
@@ -1075,6 +1110,8 @@ async function main() {
         "Commands:",
         "  demo [--goal <text>] [--preset <id>] [--session <id>]",
         "  run --goal <text> [--roles a,b] [--preset <id>] [--required-capabilities a,b] [--preferred-roles a,b] [--excluded-roles a,b]",
+        "      [--deerflow true|false] [--deerflow-force] [--deerflow-mode flash|standard|pro|ultra]",
+        "      [--deerflow-backend <path>] [--deerflow-config <path>] [--deerflow-python <bin>] [--deerflow-model <name>]",
         "  chat [--roles a,b] [--preset <id>]",
         "  list-roles",
         "  list-agents (compat alias)",
@@ -1105,6 +1142,7 @@ async function main() {
         "  pnpm vclaw:agentos -- demo --json",
         "  pnpm vclaw:agentos -- run --goal \"assess release risk\" --preset default-demo",
         "  pnpm vclaw:agentos -- run --goal \"investigate issue\" --task-type research --required-capabilities research,review --preset \"\" --json",
+        "  pnpm vclaw:agentos -- run --goal \"produce a competitive report\" --task-type research --deerflow true --deerflow-mode ultra --json",
         "  pnpm vclaw:agentos -- inspect-memory --session demo-main --json",
         "  pnpm vclaw:agentos -- vclaw-run --task \"scan workspace and summarize risks\" --json",
         "",

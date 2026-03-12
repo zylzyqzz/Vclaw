@@ -316,6 +316,14 @@ describe("pickPrimaryLanIPv4", () => {
       vi.restoreAllMocks();
     }
   });
+
+  it("returns undefined when network interface inspection throws", () => {
+    vi.spyOn(os, "networkInterfaces").mockImplementation(() => {
+      throw new Error("sandbox denied");
+    });
+
+    expect(pickPrimaryLanIPv4()).toBeUndefined();
+  });
 });
 
 describe("isPrivateOrLoopbackAddress", () => {

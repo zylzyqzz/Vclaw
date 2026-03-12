@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { type DeerFlowBridgeRunner, shouldUseDeerFlow } from "../integration/deerflow-bridge.js";
 import { MemoryManager } from "../memory/memory-manager.js";
 import { AgentRegistry, type ResolvedRuntimeAgent } from "../registry/agent-registry.js";
 import { ensurePresetExists } from "../registry/preset-utils.js";
@@ -6,6 +7,7 @@ import { validatePreset } from "../registry/role-validation.js";
 import { SessionStore } from "../session/session-store.js";
 import type {
   AgentCapability,
+  DeerFlowBridgeResponse,
   OrchestratorConfig,
   PresetDefinition,
   TaskRequest,
@@ -24,6 +26,58 @@ const ROUTE_PRIORITY_DYNAMIC = "priority: dynamic route (fallback)";
 
 function uniq(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function compact(values: Array<string | undefined>): string[] {
+  return values.map((value) => value?.trim()).filter((value): value is string => Boolean(value));
+}
+
+function defaultConclusion(selectedRoles: string[]): string {
+  return `Task completed with dynamic roles: ${selectedRoles.join(", ")}.`;
+}
+
+function defaultPlan(roleOutputs: Array<{ roleId: string; output: string }>): string[] {
+  return roleOutputs.map((entry) => entry.output);
+}
+
+function defaultRisks(): string[] {
+  return [
+    "Route quality depends on role metadata and capability definitions",
+    "Role disablement or preset drift can reduce route coverage",
+  ];
+}
+
+function defaultAcceptance(): string[] {
+  return [
+    "Route generated from explicit roles, preset, or dynamic scoring",
+    "Result includes routeSummary, selectedRoles, selectionReasons",
+    "Memory persisted across short-term, long-term, and project/entity",
+  ];
+}
+
+function deerflowFailure(
+  config: OrchestratorConfig,
+  sessionId: string,
+  taskId: string,
+  error: string,
+): DeerFlowBridgeResponse {
+  return {
+    ok: false,
+    status: "failed",
+    transport: "embedded-python",
+    mode: config.deerflow.mode,
+    threadId: `${config.deerflow.threadPrefix}-${sessionId}-${taskId}`,
+    summary: "DeerFlow bridge failed during research augmentation.",
+    conclusion: "DeerFlow bridge failed during research augmentation.",
+    plan: [],
+    risks: [],
+    acceptance: [],
+    sources: [],
+    artifacts: [],
+    rawText: "",
+    error,
+    durationMs: 0,
+  };
 }
 
 function missingRequiredCapabilities(
@@ -132,6 +186,7 @@ export class Orchestrator {
     private readonly registry: AgentRegistry,
     private readonly sessions: SessionStore,
     private readonly memory: MemoryManager,
+    private readonly deerflow?: DeerFlowBridgeRunner,
   ) {}
 
   async run(request: TaskRequest): Promise<TaskResult> {
@@ -139,7 +194,48 @@ export class Orchestrator {
     await this.sessions.markRunning(request.sessionId, taskId);
     try {
       const route = await this.selectRoles(request);
-      if (route.selected.length === 0) {
+      const deerflowDecision = shouldUseDeerFlow(this.config.deerflow, request);
+      let deerflowResult: DeerFlowBridgeResponse | undefined;
+      if (deerflowDecision.use) {
+        if (this.deerflow) {
+          try {
+            deerflowResult = await this.deerflow.run({
+              taskId,
+              sessionId: request.sessionId,
+              goal: request.goal,
+              taskType: request.taskType,
+              constraints: request.constraints ?? [],
+              context: request.context,
+              requestedOutput: "conclusion + plan + risks + acceptance",
+              options: {
+                ...request.deerflow,
+                mode: deerflowDecision.mode,
+              },
+            });
+          } catch (err) {
+            deerflowResult = deerflowFailure(
+              this.config,
+              request.sessionId,
+              taskId,
+              err instanceof Error ? err.message : String(err),
+            );
+          }
+        } else {
+          deerflowResult = {
+            ...deerflowFailure(
+              this.config,
+              request.sessionId,
+              taskId,
+              "DeerFlow bridge is not initialized.",
+            ),
+            status: "unavailable",
+            summary: "DeerFlow bridge unavailable.",
+            conclusion: "DeerFlow bridge unavailable.",
+          };
+        }
+      }
+
+      if (route.selected.length === 0 && deerflowResult?.status !== "completed") {
         throw new Error("No enabled runtime roles are available for this task route");
       }
 
@@ -149,33 +245,76 @@ export class Orchestrator {
           `[${idx + 1}] ${agent.runtime.name}: ${agent.template.systemInstruction} ` +
           `Goal="${request.goal}" TaskType="${request.taskType ?? "general"}"`,
       }));
+      if (deerflowResult?.status === "completed") {
+        roleOutputs.push({
+          roleId: "deerflow-research",
+          output: deerflowResult.summary,
+        });
+      }
 
-      const plan = roleOutputs.map((entry) => entry.output);
-      const conclusion = `Task completed with dynamic roles: ${route.selected.map((x) => x.runtime.id).join(", ")}.`;
-      const risks = [
-        "Route quality depends on role metadata and capability definitions",
-        "Role disablement or preset drift can reduce route coverage",
+      const selectedRoles = [
+        ...route.selected.map((x) => x.runtime.id),
+        ...(deerflowResult?.status === "completed" ? ["deerflow-research"] : []),
       ];
-      const acceptance = [
-        "Route generated from explicit roles, preset, or dynamic scoring",
-        "Result includes routeSummary, selectedRoles, selectionReasons",
-        "Memory persisted across short-term, long-term, and project/entity",
+      const plan =
+        deerflowResult?.status === "completed" && deerflowResult.plan.length > 0
+          ? uniq([...deerflowResult.plan, ...defaultPlan(roleOutputs)])
+          : defaultPlan(roleOutputs);
+      const conclusion =
+        deerflowResult?.status === "completed"
+          ? deerflowResult.conclusion
+          : defaultConclusion(selectedRoles);
+      const risks = uniq([
+        ...(deerflowResult?.status === "completed" ? deerflowResult.risks : []),
+        ...(deerflowResult && deerflowResult.status !== "completed"
+          ? compact([
+              `DeerFlow ${deerflowResult.status}: ${
+                deerflowResult.error ?? deerflowResult.summary
+              }`,
+            ])
+          : []),
+        ...defaultRisks(),
+      ]);
+      const acceptance = uniq([
+        ...(deerflowResult?.status === "completed" ? deerflowResult.acceptance : []),
+        ...(deerflowResult?.status === "completed"
+          ? [
+              `DeerFlow ${deerflowResult.mode} response normalized into Vclaw task contract`,
+            ]
+          : []),
+        ...defaultAcceptance(),
+      ]);
+      const selectionReasons = [
+        ...route.reasons,
+        ...deerflowDecision.reasons.map((reason) => `deerflow ${reason}`),
+        ...compact(
+          deerflowResult
+            ? [
+                `deerflow status: ${deerflowResult.status}`,
+                deerflowResult.ok ? `deerflow mode: ${deerflowResult.mode}` : deerflowResult.error,
+              ]
+            : [],
+        ),
       ];
 
       const result: TaskResult = {
         requestId: taskId,
         sessionId: request.sessionId,
-        routeSummary: route.routeSummary,
-        selectedRoles: route.selected.map((x) => x.runtime.id),
-        selectionReasons: route.reasons,
+        routeSummary:
+          deerflowResult?.status === "completed"
+            ? `${route.routeSummary} + deerflow (${deerflowResult.mode})`
+            : route.routeSummary,
+        selectedRoles,
+        selectionReasons,
         conclusion,
         plan,
         risks,
         acceptance,
         roleOutputs,
+        deerflow: deerflowResult,
       };
 
-      await this.memory.captureRun(request.sessionId, request.goal, conclusion, taskId);
+      await this.memory.captureRun(request.sessionId, request.goal, conclusion, taskId, deerflowResult);
       await this.sessions.markCompleted(request.sessionId, taskId);
       return result;
     } catch (err) {

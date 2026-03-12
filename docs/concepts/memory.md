@@ -20,9 +20,11 @@ The default workspace layout uses two memory layers:
 
 - `memory/YYYY-MM-DD.md`
   - Daily log (append-only).
+  - Fresh workspaces seed today's file automatically.
   - Read today + yesterday at session start.
-- `MEMORY.md` (optional)
+- `MEMORY.md`
   - Curated long-term memory.
+  - Fresh workspaces seed a starter version automatically.
   - **Only load in the main, private session** (never in group contexts).
 
 These files live under the workspace (`agents.defaults.workspace`, default

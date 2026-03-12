@@ -29,6 +29,23 @@ What that command does:
 - creates `vclaw.cmd` and `agentos.cmd` wrappers in `%USERPROFILE%\.local\bin`
 - verifies installation with CLI smoke commands
 
+If you are on macOS or Linux and want the same one-command bootstrap flow, run this from the
+repository root:
+
+```bash
+bash ./scripts/vclaw-bootstrap.sh
+```
+
+What that command does:
+
+- checks `git`, Node.js 22+, Corepack, and `pnpm`
+- installs missing tools through `brew` or the detected Linux package manager when possible
+- keeps `~/Vclaw-go-unfinished` as the archive target if `~/Vclaw` is occupied by a non-repo folder
+- updates or clones the repo into `~/Vclaw`
+- runs `pnpm install`
+- creates `vclaw` and `agentos` wrappers in `~/.local/bin`
+- verifies installation with CLI smoke commands
+
 If you prefer the manual source-install path, do this:
 
 1. Install Node 22 and `git`
@@ -60,6 +77,25 @@ powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
 After it finishes successfully, you should be able to run:
 
 ```powershell
+vclaw --help
+agentos demo
+```
+
+### Recommended on macOS and Linux
+
+Run from the repository root if you already have the source checkout:
+
+```bash
+bash ./scripts/vclaw-bootstrap.sh
+```
+
+The Unix bootstrap targets `~/Vclaw` by default. If that path already contains a non-repo folder,
+the script moves it aside to `~/Vclaw-go-unfinished` and then installs or updates the current
+Vclaw checkout.
+
+After it finishes successfully, you should be able to run:
+
+```bash
 vclaw --help
 agentos demo
 ```
@@ -183,6 +219,16 @@ pnpm install
 pnpm vclaw -- help
 pnpm vclaw:agentos -- demo
 pnpm vclaw:agentos -- inspect-memory --session demo-main --json
+```
+
+If you prefer the bootstrap route instead of the manual steps:
+
+```bash
+# macOS / Linux
+bash ./scripts/vclaw-bootstrap.sh
+
+# Windows
+powershell -ExecutionPolicy Bypass -File E:\Vclaw\scripts\vclaw-bootstrap.ps1
 ```
 
 ## First Commands To Know

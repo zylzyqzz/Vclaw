@@ -37,6 +37,18 @@ function mergeConfig(base: OrchestratorConfig, patch?: Partial<OrchestratorConfi
         ...patch.routing?.weights,
       },
     },
+    deerflow: {
+      ...base.deerflow,
+      ...patch.deerflow,
+      route: {
+        ...base.deerflow.route,
+        ...patch.deerflow?.route,
+      },
+      embedded: {
+        ...base.deerflow.embedded,
+        ...patch.deerflow?.embedded,
+      },
+    },
   };
 }
 
@@ -157,6 +169,7 @@ export class AgentOsRepository {
       const cfgPatch: Partial<OrchestratorConfig> = {};
       if (parsed.defaultPreset) {cfgPatch.defaultPreset = parsed.defaultPreset;}
       if (parsed.routing) {cfgPatch.routing = parsed.routing;}
+      if (parsed.deerflow) {cfgPatch.deerflow = parsed.deerflow;}
       if (Object.keys(cfgPatch).length > 0) {
         await this.saveConfigPatch(cfgPatch);
       }
@@ -188,6 +201,7 @@ export class AgentOsRepository {
       projectName: defaultConfig.projectName,
       logLevel: defaultConfig.logLevel,
       routing: defaultConfig.routing,
+      deerflow: defaultConfig.deerflow,
     });
   }
 

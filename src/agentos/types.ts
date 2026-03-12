@@ -46,6 +46,69 @@ export interface RoutingConfig {
   maxDynamicRoles: number;
 }
 
+export type DeerFlowExecutionMode = "flash" | "standard" | "pro" | "ultra";
+
+export interface DeerFlowRouteConfig {
+  taskTypes: string[];
+  requiredCapabilities: AgentCapability[];
+  goalKeywords: string[];
+}
+
+export interface DeerFlowEmbeddedConfig {
+  pythonBin: string;
+  backendPath?: string;
+  configPath?: string;
+  modelName?: string;
+}
+
+export interface DeerFlowConfig {
+  enabled: boolean;
+  timeoutMs: number;
+  mode: DeerFlowExecutionMode;
+  threadPrefix: string;
+  route: DeerFlowRouteConfig;
+  embedded: DeerFlowEmbeddedConfig;
+}
+
+export interface DeerFlowRequestOptions {
+  enabled?: boolean;
+  force?: boolean;
+  mode?: DeerFlowExecutionMode;
+  pythonBin?: string;
+  backendPath?: string;
+  configPath?: string;
+  modelName?: string;
+}
+
+export interface DeerFlowBridgeRequest {
+  taskId: string;
+  sessionId: string;
+  goal: string;
+  taskType?: string;
+  constraints: string[];
+  context?: Record<string, unknown>;
+  requestedOutput: string;
+  options?: DeerFlowRequestOptions;
+}
+
+export interface DeerFlowBridgeResponse {
+  ok: boolean;
+  status: "completed" | "failed" | "unavailable";
+  transport: "embedded-python";
+  mode: DeerFlowExecutionMode;
+  threadId: string;
+  summary: string;
+  conclusion: string;
+  plan: string[];
+  risks: string[];
+  acceptance: string[];
+  sources: string[];
+  artifacts: string[];
+  rawText: string;
+  error?: string;
+  durationMs: number;
+}
+
 export interface RoleTemplate {
   id: string;
   name: string;
@@ -106,6 +169,7 @@ export interface TaskRequest {
   requiredCapabilities?: AgentCapability[];
   preferredRoles?: string[];
   excludedRoles?: string[];
+  deerflow?: DeerFlowRequestOptions;
 }
 
 export interface TaskResult {
@@ -122,6 +186,7 @@ export interface TaskResult {
     roleId: string;
     output: string;
   }>;
+  deerflow?: DeerFlowBridgeResponse;
 }
 
 export interface SessionState {
@@ -154,6 +219,7 @@ export interface OrchestratorConfig {
   roleTemplates?: RoleTemplate[];
   runtimeAgents?: RuntimeAgent[];
   routing: RoutingConfig;
+  deerflow: DeerFlowConfig;
 }
 
 export interface MemoryQuery {

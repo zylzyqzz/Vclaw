@@ -30,3 +30,4 @@ export * from "./memory/memory-manager.js";
 export * from "./orchestrator/orchestrator.js";
 export * from "./runtime/create-runtime.js";
 export * from "./integration/vclaw-bridge.js";
+export * from "./integration/deerflow-bridge.js";

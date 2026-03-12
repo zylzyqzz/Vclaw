@@ -1,5 +1,5 @@
 import type { AgentOsStorage } from "../storage/storage.js";
-import type { MemoryLayer, MemoryRecord } from "../types.js";
+import type { DeerFlowBridgeResponse, MemoryLayer, MemoryRecord } from "../types.js";
 
 export class MemoryManager {
   constructor(private readonly storage: AgentOsStorage) {}
@@ -27,6 +27,7 @@ export class MemoryManager {
     goal: string,
     conclusion: string,
     taskId: string,
+    deerflow?: DeerFlowBridgeResponse,
   ): Promise<void> {
     await this.write(sessionId, "short-term", `session:${sessionId}`, goal, taskId);
     await this.write(sessionId, "long-term", "long-term:summary", conclusion, taskId, conclusion);
@@ -37,6 +38,33 @@ export class MemoryManager {
       `Task ${taskId} completed with conclusion: ${conclusion}`,
       taskId,
     );
+    if (deerflow?.ok) {
+      await this.write(
+        sessionId,
+        "long-term",
+        "long-term:deerflow",
+        deerflow.summary,
+        taskId,
+        deerflow.summary,
+      );
+      if (deerflow.sources.length > 0 || deerflow.artifacts.length > 0) {
+        await this.write(
+          sessionId,
+          "project-entity",
+          "entity:research",
+          JSON.stringify(
+            {
+              sources: deerflow.sources,
+              artifacts: deerflow.artifacts,
+            },
+            null,
+            2,
+          ),
+          taskId,
+          deerflow.summary,
+        );
+      }
+    }
   }
 
   async inspect(sessionId: string, limit = 20): Promise<MemoryRecord[]> {
