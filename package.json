@@ -1,7 +1,7 @@
 {
   "name": "vclaw",
-  "version": "2026.3.12",
-  "description": "Vclaw 2026.3.12: local-first multi-agent runtime with layered memory and a Vclaw-first operator surface",
+  "version": "2026.3.13",
+  "description": "Vclaw 2026.3.13: local-first multi-agent runtime with layered memory and a Vclaw-first operator surface",
   "keywords": [],
   "homepage": "https://github.com/zylzyqzz/Vclaw#readme",
   "bugs": {

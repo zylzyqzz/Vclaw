@@ -26,6 +26,15 @@ OS_KIND=""
 DEERFLOW_DIR=""
 DEERFLOW_RUNTIME_PATH=""
 
+RED='\033[38;5;196m'
+DIM='\033[2m'
+NC='\033[0m'
+
+print_banner() {
+  printf '\n%b🐜 Vclaw%b\n' "$RED" "$NC"
+  printf '%bSimple GitHub bootstrap. Local-first multi-agent runtime.%b\n\n' "$DIM" "$NC"
+}
+
 log_step() {
   printf '[vclaw-bootstrap] %s\n' "$1"
 }
@@ -421,8 +430,8 @@ ensure_uv() {
 }
 
 ensure_deerflow_python() {
-  log_step "Preparing Python 3.12 for DeerFlow"
-  preview_or_run "uv python install 3.12" uv python install 3.12
+  log_step "Preparing Python 3.12 for DeerFlow" >&2
+  preview_or_run "uv python install 3.12" uv python install 3.12 >&2
 
   if [[ "$DRY_RUN" == "1" ]]; then
     printf 'python\n'
@@ -767,25 +776,35 @@ invoke_smoke_verification() {
 
 show_summary() {
   printf '\n'
-  printf 'Vclaw bootstrap complete.\n'
+  printf '🐜 Vclaw is installed.\n'
   printf 'Repo: %s\n' "$TARGET_DIR"
   printf 'Wrappers: %s\n' "$WRAPPER_DIR"
   if [[ "$NO_DEERFLOW" != "1" ]]; then
     printf 'DeerFlow: %s\n' "$DEERFLOW_DIR"
   fi
-  printf '\nReady commands:\n'
-  printf '  vclaw --help\n'
-  printf '  agentos demo\n'
+  printf '\nNext:\n'
   if [[ "$NO_DEERFLOW" != "1" ]]; then
     printf '  agentos run --goal "research competitive landscape" --task-type research --json\n'
   fi
   if [[ "$NO_ONBOARD" != "1" ]]; then
     printf '  vclaw onboard\n'
   fi
+  printf '  vclaw gateway install\n'
+  printf '  vclaw gateway start\n'
+  printf '\nDaily commands:\n'
+  printf '  Start:   vclaw gateway start\n'
+  printf '  Restart: vclaw gateway restart\n'
+  printf '  Stop:    vclaw gateway stop\n'
+  printf '  Status:  vclaw gateway status\n'
+  printf '  Health:  vclaw health\n'
+  printf '  Probe:   vclaw channels status --probe\n'
+  printf '\nCompatibility alias:\n'
+  printf '  openclaw still points to the same runtime for existing ecosystem skills.\n'
   printf '\n'
 }
 
 main() {
+  print_banner
   parse_args "$@"
   detect_os
   refresh_common_paths

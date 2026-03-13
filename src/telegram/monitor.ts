@@ -251,6 +251,10 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       }
       infoLog("[Telegram] Checking for existing webhook conflict...");
       try {
+        const maybeGetWebhookInfo = (bot.api as { getWebhookInfo?: unknown }).getWebhookInfo;
+        if (typeof maybeGetWebhookInfo !== "function") {
+          (bot.api as { getWebhookInfo: () => Promise<null> }).getWebhookInfo = async () => null;
+        }
         // 先检查当前 webhook 状态
         const webhookInfo = await bot.api.getWebhookInfo().catch(() => null);
         if (webhookInfo && webhookInfo.url) {
@@ -259,11 +263,11 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
         await withTelegramApiErrorLogging({
           operation: "deleteWebhook",
           runtime: opts.runtime,
-          // 清空 pending updates 避免积压消息导致冲突
-          fn: () => bot.api.deleteWebhook({ drop_pending_updates: true }),
+          // 保留 pending updates，避免重启时吞掉未处理消息
+          fn: () => bot.api.deleteWebhook({ drop_pending_updates: false }),
         });
         webhookCleared = true;
-        infoLog("[Telegram] Webhook cleared and pending updates dropped - polling should work now");
+        infoLog("[Telegram] Webhook cleared - polling should work now");
         return "ready";
       } catch (err) {
         const shouldRetry = await waitBeforeRetryOnRecoverableSetupError(

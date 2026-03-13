@@ -331,6 +331,7 @@ describe("channel-health-monitor", () => {
       },
     });
     const monitor = await startAndRunCheck(manager);
+    expect(manager.stopChannel).toHaveBeenCalledWith("discord", "default");
     expect(manager.resetRestartAttempts).toHaveBeenCalledWith("discord", "default");
     expect(manager.startChannel).toHaveBeenCalledWith("discord", "default");
     monitor.stop();
@@ -343,6 +344,7 @@ describe("channel-health-monitor", () => {
       },
     });
     const monitor = await startAndRunCheck(manager);
+    expect(manager.stopChannel).toHaveBeenCalledWith("telegram", "default");
     expect(manager.resetRestartAttempts).toHaveBeenCalledWith("telegram", "default");
     expect(manager.startChannel).toHaveBeenCalledWith("telegram", "default");
     monitor.stop();
@@ -489,11 +491,22 @@ describe("channel-health-monitor", () => {
       await expectNoRestart(manager);
     });
 
-    it("restarts a channel that never received any event past the stale threshold", async () => {
+    it("does not restart a channel that has no activity signal yet", async () => {
       const now = Date.now();
       const manager = createSlackSnapshotManager(
         runningConnectedSlackAccount({
           lastStartAt: now - STALE_THRESHOLD - 60_000,
+        }),
+      );
+      await expectNoRestart(manager);
+    });
+
+    it("restarts a channel when inbound activity is stale even without lastEventAt", async () => {
+      const now = Date.now();
+      const manager = createSlackSnapshotManager(
+        runningConnectedSlackAccount({
+          lastStartAt: now - STALE_THRESHOLD - 60_000,
+          lastInboundAt: now - STALE_THRESHOLD - 30_000,
         }),
       );
       await expectRestartedChannel(manager, "slack");

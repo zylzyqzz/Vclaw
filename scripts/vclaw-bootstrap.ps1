@@ -26,6 +26,13 @@ $script:DeerFlowRuntimePath = Join-Path $script:DeerFlowDir "runtime.json"
 $script:NodeMinMajor = 22
 $script:NodeMinMinor = 12
 
+function Show-Banner {
+  Write-Host ""
+  Microsoft.PowerShell.Utility\Write-Host "🐜 Vclaw" -ForegroundColor Red
+  Microsoft.PowerShell.Utility\Write-Host "Simple GitHub bootstrap. Local-first multi-agent runtime." -ForegroundColor DarkGray
+  Write-Host ""
+}
+
 function Write-Step {
   param([string]$Message)
   Microsoft.PowerShell.Utility\Write-Host "[vclaw-bootstrap] $Message" -ForegroundColor Cyan
@@ -652,25 +659,37 @@ function Invoke-SmokeVerification {
 
 function Show-Summary {
   Write-Host ""
-  Write-Host "Vclaw bootstrap complete." -ForegroundColor Green
+  Write-Host "🐜 Vclaw is installed." -ForegroundColor Green
   Write-Host "Repo: $script:TargetDir" -ForegroundColor DarkGray
   Write-Host "Wrappers: $script:WrapperDir" -ForegroundColor DarkGray
   if (-not $NoDeerFlow) {
     Write-Host "DeerFlow: $script:DeerFlowDir" -ForegroundColor DarkGray
   }
   Write-Host ""
-  Write-Host "Ready commands:" -ForegroundColor Cyan
-  Write-Host "  vclaw --help" -ForegroundColor DarkGray
-  Write-Host "  agentos demo" -ForegroundColor DarkGray
+  Write-Host "Next:" -ForegroundColor Cyan
   if (-not $NoDeerFlow) {
     Write-Host "  agentos run --goal `"research competitive landscape`" --task-type research --json" -ForegroundColor DarkGray
   }
   if (-not $NoOnboard) {
     Write-Host "  vclaw onboard" -ForegroundColor DarkGray
   }
+  Write-Host "  vclaw gateway install" -ForegroundColor DarkGray
+  Write-Host "  vclaw gateway start" -ForegroundColor DarkGray
+  Write-Host ""
+  Write-Host "Daily commands:" -ForegroundColor Cyan
+  Write-Host "  Start:   vclaw gateway start" -ForegroundColor DarkGray
+  Write-Host "  Restart: vclaw gateway restart" -ForegroundColor DarkGray
+  Write-Host "  Stop:    vclaw gateway stop" -ForegroundColor DarkGray
+  Write-Host "  Status:  vclaw gateway status" -ForegroundColor DarkGray
+  Write-Host "  Health:  vclaw health" -ForegroundColor DarkGray
+  Write-Host "  Probe:   vclaw channels status --probe" -ForegroundColor DarkGray
+  Write-Host ""
+  Write-Host "Compatibility alias:" -ForegroundColor Cyan
+  Write-Host "  openclaw still points to the same runtime for existing ecosystem skills." -ForegroundColor DarkGray
 }
 
 function Main {
+  Show-Banner
   Write-Step "Checking environment"
   Ensure-ExecutionPolicy
   Refresh-Path

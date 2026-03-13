@@ -98,7 +98,7 @@ export function createGatewayReloadHandlers(params: {
       state.channelHealthMonitor?.stop();
       const minutes = nextConfig.gateway?.channelHealthCheckMinutes;
       nextState.channelHealthMonitor =
-        minutes === 0 ? null : params.createHealthMonitor((minutes ?? 5) * 60_000);
+        minutes === 0 ? null : params.createHealthMonitor((minutes ?? 1) * 60_000);
     }
 
     if (plan.restartGmailWatcher) {

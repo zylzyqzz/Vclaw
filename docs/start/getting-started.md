@@ -1,168 +1,98 @@
 ---
-summary: "Get Vclaw installed and run your first chat in minutes."
+summary: "Install Vclaw from GitHub, run onboarding, and start the gateway in the shortest path possible."
 read_when:
   - First time setup from zero
-  - You want the fastest path to a working chat
+  - You want the fastest path to a working Vclaw runtime
 title: "Getting Started"
 ---
 
 # Getting Started
 
-Goal: go from zero to a first working chat with minimal setup.
-
-<Info>
-Fastest chat: open the Control UI (no channel setup needed). Run `pnpm vclaw -- dashboard`
-and chat in the browser, or open `http://127.0.0.1:18789/` on the
-<Tooltip headline="Gateway host" tip="The machine running the Vclaw gateway service.">gateway host</Tooltip>.
-Docs: [Dashboard](/web/dashboard) and [Control UI](/web/control-ui).
-</Info>
+Goal: install Vclaw, finish onboarding, and get a running gateway with as little friction as possible.
 
 <Note>
-Current documented workspace release: <strong>2026.3.12</strong>
+Current documented workspace release: <strong>2026.3.13</strong>
 </Note>
 
-## Prereqs
+## 1. Install
 
-- Node 22 or newer
-
-<Tip>
-Check your Node version with `node --version` if you are unsure.
-</Tip>
-
-## Quick setup (CLI)
-
-<Steps>
-  <Step title="Run the GitHub bootstrap script">
-    <Tabs>
-      <Tab title="macOS/Linux">
-        ```bash
-        curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
-        ```
-        <img
-  src="/assets/install-script.svg"
-  alt="Install Script Process"
-  className="rounded-lg"
-/>
-      </Tab>
-      <Tab title="Windows (PowerShell)">
-        ```powershell
-        powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
-        ```
-      </Tab>
-    </Tabs>
-
-    <Note>
-    The bootstrap clones the repo from GitHub, installs prerequisites, creates wrappers, and prints the next commands.
-    </Note>
-
-  </Step>
-  <Step title="Run the onboarding wizard">
+<Tabs>
+  <Tab title="macOS/Linux">
     ```bash
-    vclaw onboard
+    curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.sh | bash
     ```
-
-    The wizard configures auth, gateway settings, and optional channels.
-    See [Onboarding Wizard](/start/wizard) for details.
-
-  </Step>
-  <Step title="Create a minimal config">
-    Use `~/.vclaw/vclaw.json` on macOS/Linux or `E:\Vclaw\.vclaw\vclaw.json` on Windows.
-
-    ```json5
-    {
-      gateway: {
-        port: 18789,
-        bind: "loopback",
-        auth: {
-          token: "replace-with-a-long-random-token"
-        }
-      },
-      agent: {
-        workspace: "~/.vclaw/workspace"
-      }
-    }
+    <img
+      src="/assets/install-script.svg"
+      alt="Vclaw install flow"
+      className="rounded-lg"
+    />
+  </Tab>
+  <Tab title="Windows (PowerShell)">
+    ```powershell
+    powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.ps1)))"
     ```
-  </Step>
-  <Step title="Check the Gateway">
-    If you installed the service, it should already be running:
+  </Tab>
+</Tabs>
 
-    ```bash
-    vclaw gateway status
-    ```
+The installer:
 
-  </Step>
-  <Step title="Open the Control UI">
-    ```bash
-    vclaw dashboard
-    ```
-  </Step>
-</Steps>
+- pulls from GitHub, not from a local source path
+- installs missing prerequisites when supported installers are available
+- writes `vclaw`, `agentos`, and `openclaw` wrappers
+- keeps the simple "install first, configure second" flow
 
-<Check>
-If the Control UI loads, your Gateway is ready for use.
-</Check>
+## 2. Run onboarding
 
-## Optional checks and extras
+```bash
+vclaw onboard
+```
 
-<AccordionGroup>
-  <Accordion title="Run the Gateway in the foreground">
-    Useful for quick tests or troubleshooting.
+If the wrapper command is not available yet, reopen the terminal once. If that still fails, run from the repo checkout:
 
-    ```bash
-    vclaw gateway --port 18789
-    ```
+```bash
+cd ~/Vclaw
+pnpm vclaw -- onboard
+```
 
-  </Accordion>
-  <Accordion title="Send a test message">
-    Requires a configured channel.
+On Windows, replace `~/Vclaw` with `E:\Vclaw`.
 
-    ```bash
-    vclaw message send --target +15555550123 --message "Hello from Vclaw"
-    ```
+## 3. Install and start the gateway service
 
-  </Accordion>
-  <Accordion title="Wrapper command not found">
-    If your shell has not reloaded the wrapper path yet, use the repo-local fallback.
+```bash
+vclaw gateway install
+vclaw gateway start
+```
 
-    ```bash
-    cd ~/Vclaw
-    pnpm vclaw -- help
-    ```
+Restart behavior is always `stop -> start`, and the normal operating path is to keep the gateway running unless you explicitly stop it.
 
-    On Windows, use `cd E:\Vclaw` instead.
+## 4. Check the system
 
-  </Accordion>
-</AccordionGroup>
+```bash
+vclaw gateway status
+vclaw health
+vclaw channels status --probe
+```
 
-## Useful environment variables
+## 5. Open the control surface
 
-If you run Vclaw as a service account or want custom config/state locations:
+```bash
+vclaw dashboard
+```
 
-- keep config, workspace, and memory under one runtime home
-- use explicit config and state locations for isolated installs
-- prefer one Gateway per machine until you intentionally need isolation
+Open `http://127.0.0.1:18789/` on the gateway host if the dashboard does not launch automatically.
 
-Full environment variable reference: [Environment vars](/help/environment).
+## Daily commands
 
-## Go deeper
+| What you want | Command |
+| --- | --- |
+| start | `vclaw gateway start` |
+| restart | `vclaw gateway restart` |
+| stop | `vclaw gateway stop` |
+| status | `vclaw gateway status` |
+| health | `vclaw health` |
+| doctor | `vclaw doctor` |
+| telegram logs | `vclaw channels logs --channel telegram` |
 
-<Columns>
-  <Card title="Onboarding Wizard (details)" href="/start/wizard">
-    Full CLI wizard reference and advanced options.
-  </Card>
-  <Card title="macOS app onboarding" href="/start/onboarding">
-    First run flow for the macOS app.
-  </Card>
-</Columns>
+## Compatibility
 
-## What you will have
-
-- A running Gateway
-- Auth configured
-- Control UI access or a connected channel
-
-## Next steps
-
-- DM safety and approvals: [Pairing](/channels/pairing)
-- Connect more channels: [Channels](/channels)
-- Advanced workflows and from source: [Setup](/start/setup)
+Docs now use `vclaw` by default, but the installer still writes the `openclaw` wrapper so existing ecosystem skills continue to work.

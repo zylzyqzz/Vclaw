@@ -14,7 +14,7 @@ const primaryDocs = [
 
 describe("Vclaw documentation surface", () => {
   it("keeps primary entry docs free from legacy public branding", async () => {
-    const legacyPattern = /\b(?:OpenClaw|openclaw|WeiClaw|weiclaw|Wei Claw|Open Claw)\b/;
+    const legacyPattern = /\b(?:OpenClaw|WeiClaw|weiclaw|Wei Claw|Open Claw)\b/;
 
     for (const relativePath of primaryDocs) {
       const raw = await readFile(path.resolve(relativePath), "utf8");
@@ -32,14 +32,14 @@ describe("Vclaw documentation surface", () => {
       "docs/gateway/index.md",
     ]) {
       const raw = await readFile(path.resolve(relativePath), "utf8");
-      expect(raw, relativePath).toContain("2026.3.12");
+      expect(raw, relativePath).toContain("2026.3.13");
     }
   });
 
   it("documents GitHub bootstrap installation on the primary install docs", async () => {
     const expectedUrls = [
-      "https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh",
-      "https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1",
+      "https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.sh",
+      "https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.ps1",
     ];
 
     for (const relativePath of ["README.md", "docs/index.md", "docs/start/getting-started.md"]) {

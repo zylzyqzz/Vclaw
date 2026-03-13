@@ -10,7 +10,7 @@ title: "Gateway Runbook"
 Use this page for day-1 startup and day-2 operations of the Gateway service.
 
 <Note>
-Current documented workspace release: <strong>2026.3.12</strong>
+Current documented workspace release: <strong>2026.3.13</strong>
 </Note>
 
 <CardGroup cols={2}>

@@ -11,7 +11,7 @@ title: "Personal Assistant Setup"
 Vclaw is a local-first assistant runtime and Gateway that can sit behind WhatsApp, Telegram, Discord, and other channels. This guide focuses on one practical shape: a dedicated assistant number that behaves like your always-on personal agent.
 
 <Note>
-Current documented workspace release: <strong>2026.3.12</strong>
+Current documented workspace release: <strong>2026.3.13</strong>
 </Note>
 
 ## Safety first

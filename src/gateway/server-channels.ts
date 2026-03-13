@@ -16,7 +16,8 @@ const CHANNEL_RESTART_POLICY: BackoffPolicy = {
   factor: 2,
   jitter: 0.1,
 };
-const MAX_RESTART_ATTEMPTS = 10;
+const RESTART_ATTEMPT_WARN_EVERY = 10;
+const STOP_TASK_TIMEOUT_MS = 20_000;
 
 export type ChannelRuntimeSnapshot = {
   channels: Partial<Record<ChannelId, ChannelAccountSnapshot>>;
@@ -54,6 +55,26 @@ function resolveDefaultRuntime(channelId: ChannelId): ChannelAccountSnapshot {
 
 function cloneDefaultRuntime(channelId: ChannelId, accountId: string): ChannelAccountSnapshot {
   return { ...resolveDefaultRuntime(channelId), accountId };
+}
+
+async function waitForTaskWithTimeout(task: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  const timeoutToken = Symbol("timeout");
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      task,
+      new Promise<symbol>((resolve) => {
+        timeout = setTimeout(() => resolve(timeoutToken), timeoutMs);
+      }),
+    ]);
+    return result !== timeoutToken;
+  } catch {
+    return true;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 type ChannelManagerOptions = {
@@ -254,19 +275,13 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
             }
             const attempt = (restartAttempts.get(rKey) ?? 0) + 1;
             restartAttempts.set(rKey, attempt);
-            if (attempt > MAX_RESTART_ATTEMPTS) {
-              setRuntime(channelId, id, {
-                accountId: id,
-                restartPending: false,
-                reconnectAttempts: attempt,
-              });
-              log.error?.(`[${id}] giving up after ${MAX_RESTART_ATTEMPTS} restart attempts`);
-              return;
-            }
             const delayMs = computeBackoff(CHANNEL_RESTART_POLICY, attempt);
             log.info?.(
-              `[${id}] auto-restart attempt ${attempt}/${MAX_RESTART_ATTEMPTS} in ${Math.round(delayMs / 1000)}s`,
+              `[${id}] auto-restart attempt ${attempt} in ${Math.round(delayMs / 1000)}s`,
             );
+            if (attempt % RESTART_ATTEMPT_WARN_EVERY === 0) {
+              log.warn?.(`[${id}] channel still crash-looping after ${attempt} restart attempts`);
+            }
             setRuntime(channelId, id, {
               accountId: id,
               restartPending: true,
@@ -349,7 +364,12 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
           });
         }
         try {
-          await task;
+          const finished = await waitForTaskWithTimeout(task, STOP_TASK_TIMEOUT_MS);
+          if (!finished) {
+            channelLogs[channelId].warn?.(
+              `[${id}] stop timeout after ${Math.round(STOP_TASK_TIMEOUT_MS / 1000)}s; forcing cleanup`,
+            );
+          }
         } catch {
           // ignore
         }

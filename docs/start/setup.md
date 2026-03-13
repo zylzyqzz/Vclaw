@@ -12,11 +12,11 @@ title: "Setup"
 If this is your first install, start with [Getting Started](/start/getting-started).
 </Note>
 
-Last updated: 2026.3.12
+Last updated: 2026.3.13
 
 ## TL;DR
 
-- Recommended installation path: run the GitHub bootstrap script from [Getting Started](/start/getting-started).
+- Recommended installation path: run the GitHub installer from [Getting Started](/start/getting-started).
 - Keep runtime code in this repo checkout.
 - Keep config, workspace, and state under `~/.vclaw/`.
 - Use `pnpm vclaw -- ...` as the source-install operator path.

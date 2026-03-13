@@ -733,7 +733,7 @@ export async function startGatewayServer(
     ? null
     : startChannelHealthMonitor({
         channelManager,
-        checkIntervalMs: (healthCheckMinutes ?? 5) * 60_000,
+        checkIntervalMs: (healthCheckMinutes ?? 1) * 60_000,
       });
 
   if (!minimalTestGateway) {

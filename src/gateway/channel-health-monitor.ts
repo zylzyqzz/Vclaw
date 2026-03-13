@@ -11,7 +11,7 @@ import type { ChannelManager } from "./server-channels.js";
 
 const log = createSubsystemLogger("gateway/health-monitor");
 
-const DEFAULT_CHECK_INTERVAL_MS = 5 * 60_000;
+const DEFAULT_CHECK_INTERVAL_MS = 60_000;
 const DEFAULT_MONITOR_STARTUP_GRACE_MS = 60_000;
 const DEFAULT_COOLDOWN_CYCLES = 2;
 const DEFAULT_MAX_RESTARTS_PER_HOUR = 10;
@@ -154,9 +154,7 @@ export function startChannelHealthMonitor(deps: ChannelHealthMonitorDeps): Chann
           log.info?.(`[${channelId}:${accountId}] health-monitor: restarting (reason: ${reason})`);
 
           try {
-            if (status.running) {
-              await channelManager.stopChannel(channelId as ChannelId, accountId);
-            }
+            await channelManager.stopChannel(channelId as ChannelId, accountId);
             channelManager.resetRestartAttempts(channelId as ChannelId, accountId);
             await channelManager.startChannel(channelId as ChannelId, accountId);
             record.lastRestartAt = now;

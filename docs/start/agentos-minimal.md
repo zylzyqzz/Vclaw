@@ -1,6 +1,6 @@
 # AgentOS Minimal Setup
 
-Version: `2026.3.12`
+Version: `2026.3.13`
 
 This is the shortest reliable path to a local-first multi-agent setup.
 

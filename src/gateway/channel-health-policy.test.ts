@@ -98,7 +98,7 @@ describe("evaluateChannelHealth", () => {
     expect(evaluation).toEqual({ healthy: false, reason: "disconnected" });
   });
 
-  it("flags stale sockets when no events arrive beyond threshold", () => {
+  it("does not flag stale sockets when channel has no activity signal yet", () => {
     const evaluation = evaluateChannelHealth(
       {
         running: true,
@@ -114,12 +114,31 @@ describe("evaluateChannelHealth", () => {
         staleEventThresholdMs: 30_000,
       },
     );
+    expect(evaluation).toEqual({ healthy: true, reason: "healthy" });
+  });
+
+  it("flags stale sockets using inbound activity when event timestamp is absent", () => {
+    const evaluation = evaluateChannelHealth(
+      {
+        running: true,
+        connected: true,
+        enabled: true,
+        configured: true,
+        lastStartAt: 0,
+        lastInboundAt: 50_000,
+      },
+      {
+        now: 100_000,
+        channelConnectGraceMs: 10_000,
+        staleEventThresholdMs: 30_000,
+      },
+    );
     expect(evaluation).toEqual({ healthy: false, reason: "stale-socket" });
   });
 });
 
 describe("resolveChannelRestartReason", () => {
-  it("maps not-running + high reconnect attempts to gave-up", () => {
+  it("maps not-running state to stopped", () => {
     const reason = resolveChannelRestartReason(
       {
         running: false,
@@ -127,6 +146,6 @@ describe("resolveChannelRestartReason", () => {
       },
       { healthy: false, reason: "not-running" },
     );
-    expect(reason).toBe("gave-up");
+    expect(reason).toBe("stopped");
   });
 });

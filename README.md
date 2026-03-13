@@ -1,6 +1,6 @@
-# Vclaw
+# 🐜 Vclaw
 
-Version: `2026.3.12`
+Version: `2026.3.13`
 
 Vclaw is a local-first multi-agent runtime with a Gateway control plane, an inspectable AgentOS
 runtime, layered memory, and a Vclaw-first CLI surface.
@@ -11,6 +11,50 @@ This repository is optimized for one thing first:
 - keep execution and memory observable
 - keep multi-agent orchestration explicit
 - keep the operator surface honest
+
+## Quick Install
+
+Use the GitHub installer. It always installs from the Vclaw GitHub repo, writes local wrappers,
+and keeps `openclaw` as a compatibility alias for existing ecosystem skills.
+
+### Windows
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.ps1)))"
+```
+
+### macOS / Linux
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.sh | bash
+```
+
+### First 3 commands after install
+
+```bash
+vclaw onboard
+vclaw gateway install
+vclaw gateway start
+```
+
+### System commands
+
+| What you want | Command |
+| --- | --- |
+| install | `scripts/install.sh` / `scripts/install.ps1` |
+| first setup | `vclaw onboard` |
+| start service | `vclaw gateway start` |
+| restart service | `vclaw gateway restart` |
+| stop service | `vclaw gateway stop` |
+| check status | `vclaw gateway status` |
+| health check | `vclaw health` |
+| channel probe | `vclaw channels status --probe` |
+| telegram logs | `vclaw channels logs --channel telegram` |
+
+Restart policy:
+
+- every restart path uses `stop -> start`
+- Vclaw stays in the "running by default" path unless you explicitly stop it
 
 ## What Vclaw Is
 
@@ -78,44 +122,49 @@ The directories that matter most for day-to-day work are:
 
 ## Install
 
-### Recommended on Windows
+The installer is intentionally simple.
+
+- it pulls from GitHub, not from a local source path
+- it updates an existing Vclaw checkout when safe
+- it writes `vclaw`, `agentos`, and `openclaw` wrappers
+- it runs smoke checks and prints the next commands
+
+Recommended commands:
+
+- Windows:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
+powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.ps1)))"
 ```
 
-What the bootstrap does:
-
-- checks `git`, Node.js `22.12+`, Corepack, and `pnpm`
-- installs missing prerequisites when supported installers are available
-- archives an occupied `E:\Vclaw` folder to `E:\Vclaw-Go-unfinished` when needed
-- syncs the repo into `E:\Vclaw`
-- runs `pnpm install`
-- creates `vclaw.cmd` and `agentos.cmd` wrappers
-- runs smoke verification
-- prints the next commands you should run, including `vclaw onboard`
-
-### Recommended on macOS and Linux
+- macOS/Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.sh | bash
 ```
 
-What the bootstrap does:
-
-- clones or updates `https://github.com/zylzyqzz/Vclaw.git` into `~/Vclaw`
-- installs missing prerequisites when the machine has a supported package manager
-- runs `pnpm install`
-- creates `vclaw` and `agentos` wrappers in `~/.local/bin`
-- appends the wrapper directory to shell startup files when needed
-- runs smoke verification and prints the next commands
-
-### Wrapper locations after install
+Wrapper locations after install:
 
 - Windows: `%USERPROFILE%\.local\bin`
 - macOS/Linux: `~/.local/bin`
 
-Reopen the terminal after bootstrap if `vclaw` or `agentos` is not found on the first try.
+If `vclaw` is still not found after reopening the terminal, add the wrapper path manually:
+
+- macOS/Linux:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.bashrc 2>/dev/null || true
+source ~/.zshrc 2>/dev/null || true
+```
+
+- Windows PowerShell:
+
+```powershell
+$bin = "$env:USERPROFILE\.local\bin"
+[Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path','User'));$bin", "User")
+```
 
 ## Manual Source Setup
 
@@ -335,7 +384,7 @@ What still needs further hardening:
 
 Vclaw now uses date-based versions for the primary product surface.
 
-- current version: `2026.3.12`
+- current version: `2026.3.13`
 - rule: the version tracks the development date of the release surface
 
 This applies to:

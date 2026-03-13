@@ -13,7 +13,7 @@ title: "Vclaw"
 </p>
 
 <Note>
-Current workspace release: <strong>2026.3.12</strong>
+Current workspace release: <strong>2026.3.13</strong>
 </Note>
 
 <Columns>
@@ -57,16 +57,16 @@ The Gateway remains the single source of truth for sessions, routing, and channe
 ## Quick Start
 
 <Steps>
-  <Step title="Run the GitHub bootstrap script">
+  <Step title="Run the GitHub installer">
     <Tabs>
       <Tab title="macOS/Linux">
         ```bash
-        curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.sh | bash
         ```
       </Tab>
       <Tab title="Windows">
         ```powershell
-        powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/vclaw-bootstrap.ps1)))"
+        powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/zylzyqzz/Vclaw/main/scripts/install.ps1)))"
         ```
       </Tab>
     </Tabs>

@@ -116,7 +116,7 @@ describe("server-channels auto restart", () => {
     setActivePluginRegistry(previousRegistry ?? createEmptyPluginRegistry());
   });
 
-  it("caps crash-loop restarts after max attempts", async () => {
+  it("keeps crash-loop auto-restart running until manually stopped", async () => {
     const startAccount = vi.fn(async () => {});
     installTestRegistry(
       createTestPlugin({
@@ -127,15 +127,15 @@ describe("server-channels auto restart", () => {
 
     await manager.startChannels();
     await vi.advanceTimersByTimeAsync(200);
-
-    expect(startAccount).toHaveBeenCalledTimes(11);
+    const callsAfterWarmup = startAccount.mock.calls.length;
+    expect(callsAfterWarmup).toBeGreaterThan(10);
     const snapshot = manager.getRuntimeSnapshot();
     const account = snapshot.channelAccounts.discord?.[DEFAULT_ACCOUNT_ID];
-    expect(account?.running).toBe(false);
-    expect(account?.reconnectAttempts).toBe(10);
+    expect(account?.restartPending).toBe(true);
+    expect(account?.reconnectAttempts).toBeGreaterThan(0);
 
     await vi.advanceTimersByTimeAsync(200);
-    expect(startAccount).toHaveBeenCalledTimes(11);
+    expect(startAccount.mock.calls.length).toBeGreaterThan(callsAfterWarmup);
   });
 
   it("does not auto-restart after manual stop during backoff", async () => {

@@ -8,6 +8,8 @@ export type ChannelHealthSnapshot = {
   activeRuns?: number;
   lastRunActivityAt?: number | null;
   lastEventAt?: number | null;
+  lastInboundAt?: number | null;
+  lastOutboundAt?: number | null;
   lastStartAt?: number | null;
   reconnectAttempts?: number;
 };
@@ -33,7 +35,7 @@ export type ChannelHealthPolicy = {
   channelConnectGraceMs: number;
 };
 
-export type ChannelRestartReason = "gave-up" | "stopped" | "stale-socket" | "stuck";
+export type ChannelRestartReason = "stopped" | "stale-socket" | "stuck";
 
 function isManagedAccount(snapshot: ChannelHealthSnapshot): boolean {
   return snapshot.enabled !== false && snapshot.configured !== false;
@@ -97,12 +99,14 @@ export function evaluateChannelHealth(
   if (snapshot.connected === false) {
     return { healthy: false, reason: "disconnected" };
   }
-  if (snapshot.lastEventAt != null || snapshot.lastStartAt != null) {
+  const lastActivityAt = [snapshot.lastEventAt, snapshot.lastInboundAt, snapshot.lastOutboundAt]
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+    .reduce<number | null>((latest, value) => (latest == null ? value : Math.max(latest, value)), null);
+  if (lastActivityAt != null && snapshot.lastStartAt != null) {
     const upSince = snapshot.lastStartAt ?? 0;
     const upDuration = policy.now - upSince;
     if (upDuration > policy.staleEventThresholdMs) {
-      const lastEvent = snapshot.lastEventAt ?? 0;
-      const eventAge = policy.now - lastEvent;
+      const eventAge = policy.now - lastActivityAt;
       if (eventAge > policy.staleEventThresholdMs) {
         return { healthy: false, reason: "stale-socket" };
       }
@@ -119,7 +123,7 @@ export function resolveChannelRestartReason(
     return "stale-socket";
   }
   if (evaluation.reason === "not-running") {
-    return snapshot.reconnectAttempts && snapshot.reconnectAttempts >= 10 ? "gave-up" : "stopped";
+    return "stopped";
   }
   return "stuck";
 }
