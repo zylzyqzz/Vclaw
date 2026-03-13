@@ -11,6 +11,7 @@ import type {
   MemoryQmdMcporterConfig,
   MemoryQmdSearchMode,
 } from "../config/types.memory.js";
+import { resolveWorkspaceBrainMemoryConfig } from "./workspace-brain.js";
 import { resolveUserPath } from "../utils.js";
 import { splitShellArgs } from "../utils/shell-argv.js";
 
@@ -294,18 +295,111 @@ function resolveDefaultCollections(
   }));
 }
 
+function mergeMemoryConfigLayers(
+  defaults: OpenClawConfig["memory"] | undefined,
+  overrides: OpenClawConfig["memory"] | undefined,
+): OpenClawConfig["memory"] | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const qmd =
+    defaults?.qmd || overrides?.qmd
+      ? {
+          command: overrides?.qmd?.command ?? defaults?.qmd?.command,
+          searchMode: overrides?.qmd?.searchMode ?? defaults?.qmd?.searchMode,
+          includeDefaultMemory:
+            overrides?.qmd?.includeDefaultMemory ?? defaults?.qmd?.includeDefaultMemory,
+          paths: overrides?.qmd?.paths ?? defaults?.qmd?.paths,
+          scope: overrides?.qmd?.scope ?? defaults?.qmd?.scope,
+          mcporter:
+            defaults?.qmd?.mcporter || overrides?.qmd?.mcporter
+              ? {
+                  enabled:
+                    overrides?.qmd?.mcporter?.enabled ?? defaults?.qmd?.mcporter?.enabled,
+                  serverName:
+                    overrides?.qmd?.mcporter?.serverName ??
+                    defaults?.qmd?.mcporter?.serverName,
+                  startDaemon:
+                    overrides?.qmd?.mcporter?.startDaemon ??
+                    defaults?.qmd?.mcporter?.startDaemon,
+                }
+              : undefined,
+          sessions:
+            defaults?.qmd?.sessions || overrides?.qmd?.sessions
+              ? {
+                  enabled: overrides?.qmd?.sessions?.enabled ?? defaults?.qmd?.sessions?.enabled,
+                  exportDir:
+                    overrides?.qmd?.sessions?.exportDir ?? defaults?.qmd?.sessions?.exportDir,
+                  retentionDays:
+                    overrides?.qmd?.sessions?.retentionDays ??
+                    defaults?.qmd?.sessions?.retentionDays,
+                }
+              : undefined,
+          update:
+            defaults?.qmd?.update || overrides?.qmd?.update
+              ? {
+                  interval: overrides?.qmd?.update?.interval ?? defaults?.qmd?.update?.interval,
+                  debounceMs:
+                    overrides?.qmd?.update?.debounceMs ?? defaults?.qmd?.update?.debounceMs,
+                  onBoot: overrides?.qmd?.update?.onBoot ?? defaults?.qmd?.update?.onBoot,
+                  waitForBootSync:
+                    overrides?.qmd?.update?.waitForBootSync ??
+                    defaults?.qmd?.update?.waitForBootSync,
+                  embedInterval:
+                    overrides?.qmd?.update?.embedInterval ??
+                    defaults?.qmd?.update?.embedInterval,
+                  commandTimeoutMs:
+                    overrides?.qmd?.update?.commandTimeoutMs ??
+                    defaults?.qmd?.update?.commandTimeoutMs,
+                  updateTimeoutMs:
+                    overrides?.qmd?.update?.updateTimeoutMs ??
+                    defaults?.qmd?.update?.updateTimeoutMs,
+                  embedTimeoutMs:
+                    overrides?.qmd?.update?.embedTimeoutMs ??
+                    defaults?.qmd?.update?.embedTimeoutMs,
+                }
+              : undefined,
+          limits:
+            defaults?.qmd?.limits || overrides?.qmd?.limits
+              ? {
+                  maxResults:
+                    overrides?.qmd?.limits?.maxResults ?? defaults?.qmd?.limits?.maxResults,
+                  maxSnippetChars:
+                    overrides?.qmd?.limits?.maxSnippetChars ??
+                    defaults?.qmd?.limits?.maxSnippetChars,
+                  maxInjectedChars:
+                    overrides?.qmd?.limits?.maxInjectedChars ??
+                    defaults?.qmd?.limits?.maxInjectedChars,
+                  timeoutMs:
+                    overrides?.qmd?.limits?.timeoutMs ?? defaults?.qmd?.limits?.timeoutMs,
+                }
+              : undefined,
+        }
+      : undefined;
+
+  return {
+    backend: overrides?.backend ?? defaults?.backend,
+    citations: overrides?.citations ?? defaults?.citations,
+    ...(qmd ? { qmd } : {}),
+  };
+}
+
 export function resolveMemoryBackendConfig(params: {
   cfg: OpenClawConfig;
   agentId: string;
 }): ResolvedMemoryBackendConfig {
-  const backend = params.cfg.memory?.backend ?? DEFAULT_BACKEND;
-  const citations = params.cfg.memory?.citations ?? DEFAULT_CITATIONS;
+  const workspaceDir = resolveAgentWorkspaceDir(params.cfg, params.agentId);
+  const memoryConfig = mergeMemoryConfigLayers(
+    resolveWorkspaceBrainMemoryConfig(workspaceDir),
+    params.cfg.memory,
+  );
+  const backend = memoryConfig?.backend ?? DEFAULT_BACKEND;
+  const citations = memoryConfig?.citations ?? DEFAULT_CITATIONS;
   if (backend !== "qmd") {
     return { backend: "builtin", citations };
   }
 
-  const workspaceDir = resolveAgentWorkspaceDir(params.cfg, params.agentId);
-  const qmdCfg = params.cfg.memory?.qmd;
+  const qmdCfg = memoryConfig?.qmd;
   const includeDefaultMemory = qmdCfg?.includeDefaultMemory !== false;
   const nameSet = new Set<string>();
   const collections = [

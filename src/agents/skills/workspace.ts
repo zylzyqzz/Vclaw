@@ -586,60 +586,91 @@ function resolveSyncedSkillDestinationPath(params: {
   }).resolved;
 }
 
+export type SyncSkillsToWorkspaceResult = {
+  targetSkillsDir: string;
+  syncedCount: number;
+  syncedSkills: string[];
+};
+
+async function createSkillsSyncStage(targetDir: string): Promise<{
+  stageRoot: string;
+  stageSkillsDir: string;
+}> {
+  const stageRoot = path.join(
+    targetDir,
+    ".vclaw",
+    "tmp",
+    `skills-sync-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  );
+  const stageSkillsDir = path.join(stageRoot, "skills");
+  await fsp.mkdir(stageSkillsDir, { recursive: true });
+  return { stageRoot, stageSkillsDir };
+}
+
 export async function syncSkillsToWorkspace(params: {
   sourceWorkspaceDir: string;
   targetWorkspaceDir: string;
   config?: OpenClawConfig;
   managedSkillsDir?: string;
   bundledSkillsDir?: string;
-}) {
+}): Promise<SyncSkillsToWorkspaceResult> {
   const sourceDir = resolveUserPath(params.sourceWorkspaceDir);
   const targetDir = resolveUserPath(params.targetWorkspaceDir);
-  if (sourceDir === targetDir) {
-    return;
-  }
 
-  await serializeByKey(`syncSkills:${targetDir}`, async () => {
+  return await serializeByKey(`syncSkills:${targetDir}`, async () => {
     const targetSkillsDir = path.join(targetDir, "skills");
-
     const entries = loadSkillEntries(sourceDir, {
       config: params.config,
       managedSkillsDir: params.managedSkillsDir,
       bundledSkillsDir: params.bundledSkillsDir,
     });
-
-    await fsp.rm(targetSkillsDir, { recursive: true, force: true });
-    await fsp.mkdir(targetSkillsDir, { recursive: true });
-
+    const syncedSkills: string[] = [];
     const usedDirNames = new Set<string>();
-    for (const entry of entries) {
-      let dest: string | null = null;
-      try {
-        dest = resolveSyncedSkillDestinationPath({
-          targetSkillsDir,
-          entry,
-          usedDirNames,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : JSON.stringify(error);
-        skillsLogger.warn(`Failed to resolve safe destination for ${entry.skill.name}: ${message}`);
-        continue;
+    const { stageRoot, stageSkillsDir } = await createSkillsSyncStage(targetDir);
+    try {
+      for (const entry of entries) {
+        let dest: string | null = null;
+        try {
+          dest = resolveSyncedSkillDestinationPath({
+            targetSkillsDir: stageSkillsDir,
+            entry,
+            usedDirNames,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : JSON.stringify(error);
+          skillsLogger.warn(
+            `Failed to resolve safe destination for ${entry.skill.name}: ${message}`,
+          );
+          continue;
+        }
+        if (!dest) {
+          skillsLogger.warn(
+            `Failed to resolve safe destination for ${entry.skill.name}: invalid source directory name`,
+          );
+          continue;
+        }
+        try {
+          await fsp.cp(entry.skill.baseDir, dest, {
+            recursive: true,
+            force: true,
+          });
+          syncedSkills.push(entry.skill.name);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : JSON.stringify(error);
+          skillsLogger.warn(`Failed to copy ${entry.skill.name} to sandbox: ${message}`);
+        }
       }
-      if (!dest) {
-        skillsLogger.warn(
-          `Failed to resolve safe destination for ${entry.skill.name}: invalid source directory name`,
-        );
-        continue;
-      }
-      try {
-        await fsp.cp(entry.skill.baseDir, dest, {
-          recursive: true,
-          force: true,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : JSON.stringify(error);
-        skillsLogger.warn(`Failed to copy ${entry.skill.name} to sandbox: ${message}`);
-      }
+
+      await fsp.mkdir(path.dirname(targetSkillsDir), { recursive: true });
+      await fsp.rm(targetSkillsDir, { recursive: true, force: true });
+      await fsp.rename(stageSkillsDir, targetSkillsDir);
+      return {
+        targetSkillsDir,
+        syncedCount: syncedSkills.length,
+        syncedSkills,
+      };
+    } finally {
+      await fsp.rm(stageRoot, { recursive: true, force: true });
     }
   });
 }

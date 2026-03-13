@@ -3,13 +3,24 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { Command } from "commander";
-import { resolveDefaultAgentId } from "../agents/agent-scope.js";
+import {
+  resolveAgentWorkspaceDir,
+  resolveDefaultAgentId,
+} from "../agents/agent-scope.js";
+import { buildPortableMemorySearchConfig } from "../agents/memory-search.js";
+import { syncSkillsToWorkspace } from "../agents/skills.js";
 import { loadConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import { resolveSessionTranscriptsDirForAgent } from "../config/sessions/paths.js";
 import { setVerbose } from "../globals.js";
 import { getMemorySearchManager, type MemorySearchManagerResult } from "../memory/index.js";
 import { listMemoryFiles, normalizeExtraMemoryPaths } from "../memory/internal.js";
+import {
+  applyWorkspaceBrainPack,
+  readWorkspaceBrainManifest,
+  resolveWorkspaceBrainManifestPath,
+  writeWorkspaceBrainManifest,
+} from "../memory/workspace-brain.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { colorize, isRich, theme } from "../terminal/theme.js";
@@ -51,6 +62,20 @@ type LoadedMemoryCommandConfig = {
   diagnostics: string[];
 };
 
+type MemoryPackResult = {
+  agentId: string;
+  workspaceDir: string;
+  manifestPath: string;
+  memory: {
+    backend: string;
+    portableSearchConfigured: boolean;
+  };
+  skills: {
+    count: number;
+    names: string[];
+  };
+};
+
 async function loadMemoryCommandConfig(commandName: string): Promise<LoadedMemoryCommandConfig> {
   const { resolvedConfig, diagnostics } = await resolveCommandSecretRefsViaGateway({
     config: loadConfig(),
@@ -61,6 +86,75 @@ async function loadMemoryCommandConfig(commandName: string): Promise<LoadedMemor
     config: resolvedConfig,
     diagnostics,
   };
+}
+
+export async function runMemoryPack(
+  opts: Pick<MemoryCommandOptions, "agent" | "json" | "verbose">,
+): Promise<void> {
+  setVerbose(Boolean(opts.verbose));
+  const { config: cfg, diagnostics } = await loadMemoryCommandConfig("memory pack");
+  emitMemorySecretResolveDiagnostics(diagnostics, { json: Boolean(opts.json) });
+  const agentId = resolveAgent(cfg, opts.agent);
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+
+  try {
+    const syncResult = await syncSkillsToWorkspace({
+      sourceWorkspaceDir: workspaceDir,
+      targetWorkspaceDir: workspaceDir,
+      config: cfg,
+    });
+    const nextManifest = applyWorkspaceBrainPack({
+      current: await readWorkspaceBrainManifest(workspaceDir),
+      agentId,
+      memoryConfig: cfg.memory,
+      memorySearch: buildPortableMemorySearchConfig(cfg, agentId),
+      skillNames: syncResult.syncedSkills,
+    });
+    const manifestPath = await writeWorkspaceBrainManifest({
+      workspaceDir,
+      manifest: nextManifest,
+    });
+    const result: MemoryPackResult = {
+      agentId,
+      workspaceDir,
+      manifestPath,
+      memory: {
+        backend: nextManifest.memory?.config?.backend ?? "builtin",
+        portableSearchConfigured: Boolean(nextManifest.agents?.[agentId]?.memory?.search),
+      },
+      skills: {
+        count: syncResult.syncedCount,
+        names: syncResult.syncedSkills,
+      },
+    };
+
+    if (opts.json) {
+      defaultRuntime.log(JSON.stringify(result, null, 2));
+      return;
+    }
+
+    defaultRuntime.log(`Portable brain packed (${agentId}).`);
+    defaultRuntime.log(`Workspace: ${shortenHomePath(workspaceDir)}`);
+    defaultRuntime.log(`Manifest: ${shortenHomePath(manifestPath)}`);
+    defaultRuntime.log(`Memory backend: ${result.memory.backend}`);
+    defaultRuntime.log(
+      `Portable memory search: ${result.memory.portableSearchConfigured ? "configured" : "disabled"}`,
+    );
+    defaultRuntime.log(`Skills packed: ${result.skills.count}`);
+    if (result.skills.names.length > 0) {
+      defaultRuntime.log(`Skill names: ${result.skills.names.join(", ")}`);
+    }
+    defaultRuntime.log(
+      "Next install: copy this workspace into the new machine and point Vclaw at the same workspace path.",
+    );
+  } catch (err) {
+    const message = formatErrorMessage(err);
+    defaultRuntime.error(`Memory pack failed (${agentId}): ${message}`);
+    defaultRuntime.error(
+      `Expected manifest path: ${shortenHomePath(resolveWorkspaceBrainManifestPath(workspaceDir))}`,
+    );
+    process.exitCode = 1;
+  }
 }
 
 function emitMemorySecretResolveDiagnostics(
@@ -583,6 +677,7 @@ export function registerMemoryCli(program: Command) {
         `\n${theme.heading("Examples:")}\n${formatHelpExamples([
           ["vclaw memory status", "Show index and provider status."],
           ["vclaw memory index --force", "Force a full reindex."],
+          ["vclaw memory pack", "Pack portable memory config and skills into the workspace."],
           ['vclaw memory search --query "deployment notes"', "Search indexed memory entries."],
           ["vclaw memory status --json", "Output machine-readable JSON."],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink("/cli/memory", "docs.vclaw.ai/cli/memory")}\n`,
@@ -736,6 +831,16 @@ export function registerMemoryCli(program: Command) {
           },
         });
       }
+    });
+
+  memory
+    .command("pack")
+    .description("Pack portable memory config and merged skills into the workspace")
+    .option("--agent <id>", "Agent id (default: default agent)")
+    .option("--json", "Print JSON")
+    .option("--verbose", "Verbose logging", false)
+    .action(async (opts: Pick<MemoryCommandOptions, "agent" | "json" | "verbose">) => {
+      await runMemoryPack(opts);
     });
 
   memory

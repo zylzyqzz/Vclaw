@@ -57,7 +57,13 @@ function cloneDefaultRuntime(channelId: ChannelId, accountId: string): ChannelAc
   return { ...resolveDefaultRuntime(channelId), accountId };
 }
 
-async function waitForTaskWithTimeout(task: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+async function waitForTaskWithTimeout(
+  task: Promise<unknown> | undefined,
+  timeoutMs: number,
+): Promise<boolean> {
+  if (!task) {
+    return true;
+  }
   const timeoutToken = Symbol("timeout");
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {

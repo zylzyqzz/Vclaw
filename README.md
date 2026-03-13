@@ -48,6 +48,7 @@ vclaw gateway start
 | stop service | `vclaw gateway stop` |
 | check status | `vclaw gateway status` |
 | health check | `vclaw health` |
+| pack portable brain | `vclaw memory pack` |
 | channel probe | `vclaw channels status --probe` |
 | telegram logs | `vclaw channels logs --channel telegram` |
 
@@ -252,6 +253,30 @@ pnpm vclaw:agentos -- demo --json
 ```
 
 On Windows, replace `~/Vclaw` with `E:\Vclaw`.
+
+## Portable Reinstall
+
+If you want a new install to immediately recover memory settings and usable skills, pack the
+workspace before moving machines:
+
+```bash
+vclaw memory pack
+```
+
+That command does two things:
+
+- writes a portable brain manifest to `.vclaw/brain/manifest.json` inside the workspace
+- syncs merged skills into `workspace/skills/` so the workspace becomes self-contained
+
+When reinstalling on a new machine:
+
+1. install Vclaw normally
+2. copy the whole workspace directory over
+3. point Vclaw at that workspace path
+4. start Vclaw
+
+The portable brain manifest keeps memory behavior and the packed skills directory brings the
+workspace-local skill surface with it. Secrets are not written into the manifest.
 
 ## Quick Start
 

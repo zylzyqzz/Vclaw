@@ -7,6 +7,13 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 const getMemorySearchManager = vi.fn();
 const loadConfig = vi.fn(() => ({}));
 const resolveDefaultAgentId = vi.fn(() => "main");
+const resolveAgentWorkspaceDir = vi.fn(() => "/tmp/openclaw");
+const resolveAgentConfig = vi.fn(() => undefined);
+const syncSkillsToWorkspace = vi.fn(async () => ({
+  targetSkillsDir: "/tmp/openclaw/skills",
+  syncedCount: 0,
+  syncedSkills: [] as string[],
+}));
 const resolveCommandSecretRefsViaGateway = vi.fn(async ({ config }: { config: unknown }) => ({
   resolvedConfig: config,
   diagnostics: [] as string[],
@@ -22,6 +29,12 @@ vi.mock("../config/config.js", () => ({
 
 vi.mock("../agents/agent-scope.js", () => ({
   resolveDefaultAgentId,
+  resolveAgentWorkspaceDir,
+  resolveAgentConfig,
+}));
+
+vi.mock("../agents/skills.js", () => ({
+  syncSkillsToWorkspace,
 }));
 
 vi.mock("./command-secret-gateway.js", () => ({
@@ -42,6 +55,15 @@ beforeAll(async () => {
 afterEach(() => {
   vi.restoreAllMocks();
   getMemorySearchManager.mockClear();
+  loadConfig.mockReset();
+  loadConfig.mockReturnValue({});
+  resolveDefaultAgentId.mockReset();
+  resolveDefaultAgentId.mockReturnValue("main");
+  resolveAgentConfig.mockReset();
+  resolveAgentConfig.mockReturnValue(undefined);
+  syncSkillsToWorkspace.mockClear();
+  resolveAgentWorkspaceDir.mockReset();
+  resolveAgentWorkspaceDir.mockReturnValue("/tmp/openclaw");
   resolveCommandSecretRefsViaGateway.mockClear();
   process.exitCode = undefined;
   setVerbose(false);
@@ -537,5 +559,54 @@ describe("memory cli", () => {
     expect(Array.isArray(payload.results)).toBe(true);
     expect(payload.results as unknown[]).toHaveLength(1);
     expect(close).toHaveBeenCalled();
+  });
+
+  it("packs portable memory config and synced skills into the workspace", async () => {
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "memory-cli-pack-"));
+    resolveAgentWorkspaceDir.mockReturnValue(workspaceDir);
+    loadConfig.mockReturnValue({
+      memory: { backend: "qmd", citations: "on" },
+      agents: {
+        defaults: {
+          workspace: workspaceDir,
+          memorySearch: {
+            provider: "openai",
+            model: "text-embedding-3-small",
+          },
+        },
+      },
+    });
+    syncSkillsToWorkspace.mockResolvedValueOnce({
+      targetSkillsDir: path.join(workspaceDir, "skills"),
+      syncedCount: 2,
+      syncedSkills: ["planner", "reviewer"],
+    });
+
+    try {
+      const log = spyRuntimeLogs();
+      await runMemoryCli(["pack"]);
+
+      const manifestPath = path.join(workspaceDir, ".vclaw", "brain", "manifest.json");
+      const manifest = JSON.parse(await fs.readFile(manifestPath, "utf-8")) as Record<
+        string,
+        unknown
+      >;
+      expect(syncSkillsToWorkspace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceWorkspaceDir: workspaceDir,
+          targetWorkspaceDir: workspaceDir,
+        }),
+      );
+      expect((manifest.memory as { config?: { backend?: string } })?.config?.backend).toBe("qmd");
+      expect(
+        (
+          manifest.agents as Record<string, { memory?: { search?: { provider?: string } } }>
+        )?.main?.memory?.search?.provider,
+      ).toBe("openai");
+      expect((manifest.skills as { names?: string[] })?.names).toEqual(["planner", "reviewer"]);
+      expect(log).toHaveBeenCalledWith("Portable brain packed (main).");
+    } finally {
+      await fs.rm(workspaceDir, { recursive: true, force: true });
+    }
   });
 });

@@ -1,8 +1,17 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { resolveAgentWorkspaceDir } from "../agents/agent-scope.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { resolveMemoryBackendConfig } from "./backend-config.js";
+import { applyWorkspaceBrainPack, writeWorkspaceBrainManifest } from "./workspace-brain.js";
+
+const tmpDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tmpDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
+});
 
 describe("resolveMemoryBackendConfig", () => {
   it("defaults to builtin backend when config missing", () => {
@@ -142,5 +151,36 @@ describe("resolveMemoryBackendConfig", () => {
     } as OpenClawConfig;
     const resolved = resolveMemoryBackendConfig({ cfg, agentId: "main" });
     expect(resolved.qmd?.searchMode).toBe("vsearch");
+  });
+
+  it("uses workspace brain manifest as fallback when explicit memory config is missing", async () => {
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "vclaw-memory-backend-"));
+    tmpDirs.push(workspaceDir);
+    await writeWorkspaceBrainManifest({
+      workspaceDir,
+      manifest: applyWorkspaceBrainPack({
+        agentId: "main",
+        memoryConfig: {
+          backend: "qmd",
+          qmd: {
+            searchMode: "vsearch",
+            command: "qmd-custom",
+          },
+        },
+      }),
+    });
+    const cfg = {
+      agents: {
+        defaults: {
+          workspace: workspaceDir,
+        },
+      },
+    } as OpenClawConfig;
+
+    const resolved = resolveMemoryBackendConfig({ cfg, agentId: "main" });
+
+    expect(resolved.backend).toBe("qmd");
+    expect(resolved.qmd?.searchMode).toBe("vsearch");
+    expect(resolved.qmd?.command).toBe("qmd-custom");
   });
 });

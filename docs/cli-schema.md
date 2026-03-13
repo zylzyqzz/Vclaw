@@ -1,6 +1,6 @@
 # Vclaw AgentOS CLI JSON Schema
 
-Version: `2026.3.12`
+Version: `2026.3.13`
 
 All core `Vclaw AgentOS` commands support `--json` and return a stable top-level envelope.
 
@@ -10,14 +10,14 @@ All core `Vclaw AgentOS` commands support `--json` and return a stable top-level
 {
   "ok": true,
   "command": "run",
-  "version": "2026.3.12",
+  "version": "2026.3.13",
   "routeSummary": "preset route (default-demo)",
   "selectedRoles": ["commander", "planner", "builder", "reviewer"],
   "selectionReasons": ["priority: preset (second)"],
   "result": {},
   "lintFindings": [],
   "metadata": {
-    "generatedAt": "2026-03-12T00:00:00.000Z"
+    "generatedAt": "2026-03-13T00:00:00.000Z"
   }
 }
 ```
@@ -47,9 +47,9 @@ Validation-related fields:
 {
   "ok": false,
   "command": "validate-preset",
-  "version": "2026.3.12",
+  "version": "2026.3.13",
   "metadata": {
-    "generatedAt": "2026-03-12T00:00:00.000Z",
+    "generatedAt": "2026-03-13T00:00:00.000Z",
     "exitCode": 2
   },
   "error": {

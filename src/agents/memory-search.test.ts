@@ -1,8 +1,17 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
+import { applyWorkspaceBrainPack, writeWorkspaceBrainManifest } from "../memory/workspace-brain.js";
 import { resolveMemorySearchConfig } from "./memory-search.js";
 
 const asConfig = (cfg: OpenClawConfig): OpenClawConfig => cfg;
+const tmpDirs: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(tmpDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
+});
 
 describe("memory search config", () => {
   function configWithDefaultProvider(
@@ -301,5 +310,48 @@ describe("memory search config", () => {
     });
     const resolved = resolveMemorySearchConfig(cfg, "main");
     expect(resolved?.sources).toContain("sessions");
+  });
+
+  it("falls back to workspace brain memory search config on a fresh install", async () => {
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "vclaw-memory-search-"));
+    tmpDirs.push(workspaceDir);
+    await writeWorkspaceBrainManifest({
+      workspaceDir,
+      manifest: applyWorkspaceBrainPack({
+        agentId: "main",
+        memorySearch: {
+          provider: "gemini",
+          model: "gemini-embedding-001",
+          extraPaths: ["docs"],
+          remote: {
+            baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+            apiKey: "secret-key",
+          },
+        },
+      }),
+    });
+    const cfg = asConfig({
+      agents: {
+        defaults: {
+          workspace: workspaceDir,
+        },
+      },
+    });
+
+    const resolved = resolveMemorySearchConfig(cfg, "main");
+
+    expect(resolved?.provider).toBe("gemini");
+    expect(resolved?.model).toBe("gemini-embedding-001");
+    expect(resolved?.extraPaths).toEqual(["docs"]);
+    expect(resolved?.remote).toEqual({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      batch: {
+        enabled: false,
+        wait: true,
+        concurrency: 2,
+        pollIntervalMs: 2000,
+        timeoutMinutes: 60,
+      },
+    });
   });
 });

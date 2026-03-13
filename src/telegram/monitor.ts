@@ -253,7 +253,8 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       try {
         const maybeGetWebhookInfo = (bot.api as { getWebhookInfo?: unknown }).getWebhookInfo;
         if (typeof maybeGetWebhookInfo !== "function") {
-          (bot.api as { getWebhookInfo: () => Promise<null> }).getWebhookInfo = async () => null;
+          (bot.api as unknown as { getWebhookInfo: () => Promise<null> }).getWebhookInfo =
+            async () => null;
         }
         // 先检查当前 webhook 状态
         const webhookInfo = await bot.api.getWebhookInfo().catch(() => null);

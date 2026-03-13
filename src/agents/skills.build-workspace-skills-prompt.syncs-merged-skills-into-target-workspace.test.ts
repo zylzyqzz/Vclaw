@@ -95,6 +95,36 @@ describe("buildWorkspaceSkillsPrompt", () => {
     expect(prompt).not.toContain("Extra version");
     expect(prompt.replaceAll("\\", "/")).toContain("demo-skill/SKILL.md");
   });
+  it("syncs merged skills back into the same workspace for portable reinstalls", async () => {
+    const workspaceDir = await createCaseDir("self-sync");
+    const managedDir = path.join(workspaceDir, ".managed");
+
+    await writeSkill({
+      dir: path.join(managedDir, "managed-only"),
+      name: "managed-only",
+      description: "Managed only version",
+    });
+
+    await withEnv({ HOME: workspaceDir, PATH: "" }, () =>
+      syncSkillsToWorkspace({
+        sourceWorkspaceDir: workspaceDir,
+        targetWorkspaceDir: workspaceDir,
+        managedSkillsDir: managedDir,
+      }),
+    );
+
+    await fs.rm(managedDir, { recursive: true, force: true });
+    const prompt = buildPrompt(workspaceDir, {
+      managedSkillsDir: path.join(workspaceDir, ".managed"),
+      bundledSkillsDir: path.join(workspaceDir, ".bundled"),
+    });
+
+    expect(prompt).toContain("Managed only version");
+    expect(prompt.replaceAll("\\", "/")).toContain("managed-only/SKILL.md");
+    expect(await pathExists(path.join(workspaceDir, "skills", "managed-only", "SKILL.md"))).toBe(
+      true,
+    );
+  });
   it("keeps synced skills confined under target workspace when frontmatter name uses traversal", async () => {
     const sourceWorkspace = await createCaseDir("source");
     const targetWorkspace = await createCaseDir("target");

@@ -1,6 +1,6 @@
 import type { OpenClawConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-import type { ResolvedQmdConfig } from "./backend-config.js";
+import type { ResolvedMemoryBackendConfig, ResolvedQmdConfig } from "./backend-config.js";
 import { resolveMemoryBackendConfig } from "./backend-config.js";
 import type {
   MemoryEmbeddingProbeResult,
@@ -11,6 +11,7 @@ import type {
 const log = createSubsystemLogger("memory");
 const QMD_MANAGER_CACHE = new Map<string, MemorySearchManager>();
 let managerRuntimePromise: Promise<typeof import("./manager-runtime.js")> | null = null;
+const MEMORY_SEARCH_BACKEND_LOADERS = new Map<string, MemorySearchBackendLoader>();
 
 function loadManagerRuntime() {
   managerRuntimePromise ??= import("./manager-runtime.js");
@@ -22,59 +23,33 @@ export type MemorySearchManagerResult = {
   error?: string;
 };
 
-export async function getMemorySearchManager(params: {
+type MemorySearchBackendLoaderParams = {
   cfg: OpenClawConfig;
   agentId: string;
   purpose?: "default" | "status";
-}): Promise<MemorySearchManagerResult> {
-  const resolved = resolveMemoryBackendConfig(params);
-  if (resolved.backend === "qmd" && resolved.qmd) {
-    const statusOnly = params.purpose === "status";
-    let cacheKey: string | undefined;
-    if (!statusOnly) {
-      cacheKey = buildQmdCacheKey(params.agentId, resolved.qmd);
-      const cached = QMD_MANAGER_CACHE.get(cacheKey);
-      if (cached) {
-        return { manager: cached };
-      }
-    }
-    try {
-      const { QmdMemoryManager } = await import("./qmd-manager.js");
-      const primary = await QmdMemoryManager.create({
-        cfg: params.cfg,
-        agentId: params.agentId,
-        resolved,
-        mode: statusOnly ? "status" : "full",
-      });
-      if (primary) {
-        if (statusOnly) {
-          return { manager: primary };
-        }
-        const wrapper = new FallbackMemoryManager(
-          {
-            primary,
-            fallbackFactory: async () => {
-              const { MemoryIndexManager } = await loadManagerRuntime();
-              return await MemoryIndexManager.get(params);
-            },
-          },
-          () => {
-            if (cacheKey) {
-              QMD_MANAGER_CACHE.delete(cacheKey);
-            }
-          },
-        );
-        if (cacheKey) {
-          QMD_MANAGER_CACHE.set(cacheKey, wrapper);
-        }
-        return { manager: wrapper };
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.warn(`qmd memory unavailable; falling back to builtin: ${message}`);
-    }
-  }
+  resolved: ResolvedMemoryBackendConfig;
+};
 
+type MemorySearchBackendLoader = (
+  params: MemorySearchBackendLoaderParams,
+) => Promise<MemorySearchManagerResult | null>;
+
+export function registerMemorySearchBackend(params: {
+  id: string;
+  load: MemorySearchBackendLoader;
+}): () => void {
+  MEMORY_SEARCH_BACKEND_LOADERS.set(params.id, params.load);
+  return () => {
+    const current = MEMORY_SEARCH_BACKEND_LOADERS.get(params.id);
+    if (current === params.load) {
+      MEMORY_SEARCH_BACKEND_LOADERS.delete(params.id);
+    }
+  };
+}
+
+async function loadBuiltinMemorySearchManager(
+  params: MemorySearchBackendLoaderParams,
+): Promise<MemorySearchManagerResult> {
   try {
     const { MemoryIndexManager } = await loadManagerRuntime();
     const manager = await MemoryIndexManager.get(params);
@@ -83,6 +58,107 @@ export async function getMemorySearchManager(params: {
     const message = err instanceof Error ? err.message : String(err);
     return { manager: null, error: message };
   }
+}
+
+async function loadQmdMemorySearchManager(
+  params: MemorySearchBackendLoaderParams,
+): Promise<MemorySearchManagerResult | null> {
+  if (params.resolved.backend !== "qmd" || !params.resolved.qmd) {
+    return null;
+  }
+  const statusOnly = params.purpose === "status";
+  let cacheKey: string | undefined;
+  if (!statusOnly) {
+    cacheKey = buildQmdCacheKey(params.agentId, params.resolved.qmd);
+    const cached = QMD_MANAGER_CACHE.get(cacheKey);
+    if (cached) {
+      return { manager: cached };
+    }
+  }
+  try {
+    const { QmdMemoryManager } = await import("./qmd-manager.js");
+    const primary = await QmdMemoryManager.create({
+      cfg: params.cfg,
+      agentId: params.agentId,
+      resolved: params.resolved,
+      mode: statusOnly ? "status" : "full",
+    });
+    if (!primary) {
+      return null;
+    }
+    if (statusOnly) {
+      return { manager: primary };
+    }
+    const wrapper = new FallbackMemoryManager(
+      {
+        primary,
+        fallbackFactory: async () => {
+          const { manager } = await loadBuiltinMemorySearchManager({
+            ...params,
+            resolved: { backend: "builtin", citations: params.resolved.citations },
+          });
+          return manager;
+        },
+      },
+      () => {
+        if (cacheKey) {
+          QMD_MANAGER_CACHE.delete(cacheKey);
+        }
+      },
+    );
+    if (cacheKey) {
+      QMD_MANAGER_CACHE.set(cacheKey, wrapper);
+    }
+    return { manager: wrapper };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn(`qmd memory unavailable; falling back to builtin: ${message}`);
+    return null;
+  }
+}
+
+function ensureDefaultMemorySearchBackendsRegistered(): void {
+  if (!MEMORY_SEARCH_BACKEND_LOADERS.has("builtin")) {
+    MEMORY_SEARCH_BACKEND_LOADERS.set("builtin", loadBuiltinMemorySearchManager);
+  }
+  if (!MEMORY_SEARCH_BACKEND_LOADERS.has("qmd")) {
+    MEMORY_SEARCH_BACKEND_LOADERS.set("qmd", loadQmdMemorySearchManager);
+  }
+}
+
+export async function getMemorySearchManager(params: {
+  cfg: OpenClawConfig;
+  agentId: string;
+  purpose?: "default" | "status";
+}): Promise<MemorySearchManagerResult> {
+  ensureDefaultMemorySearchBackendsRegistered();
+  const resolved = resolveMemoryBackendConfig(params);
+  const baseParams: MemorySearchBackendLoaderParams = {
+    cfg: params.cfg,
+    agentId: params.agentId,
+    purpose: params.purpose,
+    resolved,
+  };
+
+  const selectedLoader = MEMORY_SEARCH_BACKEND_LOADERS.get(resolved.backend);
+  if (selectedLoader) {
+    const loaded = await selectedLoader(baseParams);
+    if (loaded) {
+      return loaded;
+    }
+  }
+
+  const builtinLoader = MEMORY_SEARCH_BACKEND_LOADERS.get("builtin");
+  if (builtinLoader) {
+    const loaded = await builtinLoader({
+      ...baseParams,
+      resolved: { backend: "builtin", citations: resolved.citations },
+    });
+    if (loaded) {
+      return loaded;
+    }
+  }
+  return { manager: null, error: `memory backend unavailable: ${resolved.backend}` };
 }
 
 class FallbackMemoryManager implements MemorySearchManager {

@@ -3,8 +3,9 @@ import path from "node:path";
 import type { OpenClawConfig, MemorySearchConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import type { SecretInput } from "../config/types.secrets.js";
+import { resolveWorkspaceBrainMemorySearchConfig } from "../memory/workspace-brain.js";
 import { clampInt, clampNumber, resolveUserPath } from "../utils.js";
-import { resolveAgentConfig } from "./agent-scope.js";
+import { resolveAgentConfig, resolveAgentWorkspaceDir } from "./agent-scope.js";
 
 export type ResolvedMemorySearchConfig = {
   enabled: boolean;
@@ -101,6 +102,199 @@ const DEFAULT_TEMPORAL_DECAY_ENABLED = false;
 const DEFAULT_TEMPORAL_DECAY_HALF_LIFE_DAYS = 30;
 const DEFAULT_CACHE_ENABLED = true;
 const DEFAULT_SOURCES: Array<"memory" | "sessions"> = ["memory"];
+
+function mergeMemorySearchRemoteConfig(
+  defaults: MemorySearchConfig["remote"],
+  overrides: MemorySearchConfig["remote"],
+): MemorySearchConfig["remote"] | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const batch =
+    defaults?.batch || overrides?.batch
+      ? {
+          enabled: overrides?.batch?.enabled ?? defaults?.batch?.enabled,
+          wait: overrides?.batch?.wait ?? defaults?.batch?.wait,
+          concurrency: overrides?.batch?.concurrency ?? defaults?.batch?.concurrency,
+          pollIntervalMs: overrides?.batch?.pollIntervalMs ?? defaults?.batch?.pollIntervalMs,
+          timeoutMinutes: overrides?.batch?.timeoutMinutes ?? defaults?.batch?.timeoutMinutes,
+        }
+      : undefined;
+  return {
+    baseUrl: overrides?.baseUrl ?? defaults?.baseUrl,
+    apiKey: overrides?.apiKey ?? defaults?.apiKey,
+    headers: overrides?.headers ?? defaults?.headers,
+    ...(batch ? { batch } : {}),
+  };
+}
+
+function mergeMemorySearchStoreConfig(
+  defaults: MemorySearchConfig["store"],
+  overrides: MemorySearchConfig["store"],
+): MemorySearchConfig["store"] | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const vector =
+    defaults?.vector || overrides?.vector
+      ? {
+          enabled: overrides?.vector?.enabled ?? defaults?.vector?.enabled,
+          extensionPath: overrides?.vector?.extensionPath ?? defaults?.vector?.extensionPath,
+        }
+      : undefined;
+  const cache =
+    defaults?.cache || overrides?.cache
+      ? {
+          enabled: overrides?.cache?.enabled ?? defaults?.cache?.enabled,
+          maxEntries: overrides?.cache?.maxEntries ?? defaults?.cache?.maxEntries,
+        }
+      : undefined;
+  return {
+    driver: overrides?.driver ?? defaults?.driver,
+    path: overrides?.path ?? defaults?.path,
+    ...(vector ? { vector } : {}),
+    ...(cache ? { cache } : {}),
+  };
+}
+
+function mergeMemorySearchSyncConfig(
+  defaults: MemorySearchConfig["sync"],
+  overrides: MemorySearchConfig["sync"],
+): MemorySearchConfig["sync"] | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const sessions =
+    defaults?.sessions || overrides?.sessions
+      ? {
+          deltaBytes: overrides?.sessions?.deltaBytes ?? defaults?.sessions?.deltaBytes,
+          deltaMessages: overrides?.sessions?.deltaMessages ?? defaults?.sessions?.deltaMessages,
+        }
+      : undefined;
+  return {
+    onSessionStart: overrides?.onSessionStart ?? defaults?.onSessionStart,
+    onSearch: overrides?.onSearch ?? defaults?.onSearch,
+    watch: overrides?.watch ?? defaults?.watch,
+    watchDebounceMs: overrides?.watchDebounceMs ?? defaults?.watchDebounceMs,
+    intervalMinutes: overrides?.intervalMinutes ?? defaults?.intervalMinutes,
+    ...(sessions ? { sessions } : {}),
+  };
+}
+
+function mergeMemorySearchQueryConfig(
+  defaults: MemorySearchConfig["query"],
+  overrides: MemorySearchConfig["query"],
+): MemorySearchConfig["query"] | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const mmr =
+    defaults?.hybrid?.mmr || overrides?.hybrid?.mmr
+      ? {
+          enabled: overrides?.hybrid?.mmr?.enabled ?? defaults?.hybrid?.mmr?.enabled,
+          lambda: overrides?.hybrid?.mmr?.lambda ?? defaults?.hybrid?.mmr?.lambda,
+        }
+      : undefined;
+  const temporalDecay =
+    defaults?.hybrid?.temporalDecay || overrides?.hybrid?.temporalDecay
+      ? {
+          enabled:
+            overrides?.hybrid?.temporalDecay?.enabled ??
+            defaults?.hybrid?.temporalDecay?.enabled,
+          halfLifeDays:
+            overrides?.hybrid?.temporalDecay?.halfLifeDays ??
+            defaults?.hybrid?.temporalDecay?.halfLifeDays,
+        }
+      : undefined;
+  const hybrid =
+    defaults?.hybrid || overrides?.hybrid
+      ? {
+          enabled: overrides?.hybrid?.enabled ?? defaults?.hybrid?.enabled,
+          vectorWeight: overrides?.hybrid?.vectorWeight ?? defaults?.hybrid?.vectorWeight,
+          textWeight: overrides?.hybrid?.textWeight ?? defaults?.hybrid?.textWeight,
+          candidateMultiplier:
+            overrides?.hybrid?.candidateMultiplier ?? defaults?.hybrid?.candidateMultiplier,
+          ...(mmr ? { mmr } : {}),
+          ...(temporalDecay ? { temporalDecay } : {}),
+        }
+      : undefined;
+  return {
+    maxResults: overrides?.maxResults ?? defaults?.maxResults,
+    minScore: overrides?.minScore ?? defaults?.minScore,
+    ...(hybrid ? { hybrid } : {}),
+  };
+}
+
+export function mergeMemorySearchConfigLayers(
+  defaults: MemorySearchConfig | undefined,
+  overrides: MemorySearchConfig | undefined,
+): MemorySearchConfig | undefined {
+  if (!defaults && !overrides) {
+    return undefined;
+  }
+  const rawPaths = [...(defaults?.extraPaths ?? []), ...(overrides?.extraPaths ?? [])]
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const extraPaths = Array.from(new Set(rawPaths));
+  return {
+    enabled: overrides?.enabled ?? defaults?.enabled,
+    sources: overrides?.sources ?? defaults?.sources,
+    ...(extraPaths.length > 0 ? { extraPaths } : {}),
+    experimental:
+      defaults?.experimental || overrides?.experimental
+        ? {
+            sessionMemory:
+              overrides?.experimental?.sessionMemory ?? defaults?.experimental?.sessionMemory,
+          }
+        : undefined,
+    provider: overrides?.provider ?? defaults?.provider,
+    remote: mergeMemorySearchRemoteConfig(defaults?.remote, overrides?.remote),
+    fallback: overrides?.fallback ?? defaults?.fallback,
+    model: overrides?.model ?? defaults?.model,
+    local:
+      defaults?.local || overrides?.local
+        ? {
+            modelPath: overrides?.local?.modelPath ?? defaults?.local?.modelPath,
+            modelCacheDir: overrides?.local?.modelCacheDir ?? defaults?.local?.modelCacheDir,
+          }
+        : undefined,
+    store: mergeMemorySearchStoreConfig(defaults?.store, overrides?.store),
+    chunking:
+      defaults?.chunking || overrides?.chunking
+        ? {
+            tokens: overrides?.chunking?.tokens ?? defaults?.chunking?.tokens,
+            overlap: overrides?.chunking?.overlap ?? defaults?.chunking?.overlap,
+          }
+        : undefined,
+    sync: mergeMemorySearchSyncConfig(defaults?.sync, overrides?.sync),
+    query: mergeMemorySearchQueryConfig(defaults?.query, overrides?.query),
+    cache:
+      defaults?.cache || overrides?.cache
+        ? {
+            enabled: overrides?.cache?.enabled ?? defaults?.cache?.enabled,
+            maxEntries: overrides?.cache?.maxEntries ?? defaults?.cache?.maxEntries,
+          }
+        : undefined,
+  };
+}
+
+function resolveMemorySearchDefaults(
+  cfg: OpenClawConfig,
+  agentId: string,
+): MemorySearchConfig | undefined {
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+  const manifestDefaults = resolveWorkspaceBrainMemorySearchConfig(workspaceDir, agentId);
+  return mergeMemorySearchConfigLayers(manifestDefaults, cfg.agents?.defaults?.memorySearch);
+}
+
+export function buildPortableMemorySearchConfig(
+  cfg: OpenClawConfig,
+  agentId: string,
+): MemorySearchConfig | undefined {
+  const defaults = resolveMemorySearchDefaults(cfg, agentId);
+  const overrides = resolveAgentConfig(cfg, agentId)?.memorySearch;
+  return mergeMemorySearchConfigLayers(defaults, overrides);
+}
 
 function normalizeSources(
   sources: Array<"memory" | "sessions"> | undefined,
@@ -356,7 +550,7 @@ export function resolveMemorySearchConfig(
   cfg: OpenClawConfig,
   agentId: string,
 ): ResolvedMemorySearchConfig | null {
-  const defaults = cfg.agents?.defaults?.memorySearch;
+  const defaults = resolveMemorySearchDefaults(cfg, agentId);
   const overrides = resolveAgentConfig(cfg, agentId)?.memorySearch;
   const resolved = mergeConfig(defaults, overrides, agentId);
   if (!resolved.enabled) {

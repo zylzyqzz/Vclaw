@@ -1,6 +1,6 @@
 # Vclaw AgentOS CLI Usage
 
-Version: `2026.3.12`
+Version: `2026.3.13`
 
 ## Preferred Entry Point
 
