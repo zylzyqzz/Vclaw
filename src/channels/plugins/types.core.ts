@@ -105,6 +105,7 @@ export type ChannelAccountSnapshot = {
   name?: string;
   enabled?: boolean;
   configured?: boolean;
+  lifecycleMode?: "persistent" | "webhook";
   linked?: boolean;
   running?: boolean;
   connected?: boolean;

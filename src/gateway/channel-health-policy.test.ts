@@ -135,6 +135,26 @@ describe("evaluateChannelHealth", () => {
     );
     expect(evaluation).toEqual({ healthy: false, reason: "stale-socket" });
   });
+
+  it("treats webhook lifecycle channels as healthy without long-connection checks", () => {
+    const evaluation = evaluateChannelHealth(
+      {
+        running: true,
+        enabled: true,
+        configured: true,
+        lifecycleMode: "webhook",
+        connected: false,
+        lastStartAt: 0,
+        lastInboundAt: 50_000,
+      },
+      {
+        now: 100_000,
+        channelConnectGraceMs: 10_000,
+        staleEventThresholdMs: 30_000,
+      },
+    );
+    expect(evaluation).toEqual({ healthy: true, reason: "healthy" });
+  });
 });
 
 describe("resolveChannelRestartReason", () => {

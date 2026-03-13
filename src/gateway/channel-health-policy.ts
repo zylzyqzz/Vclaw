@@ -3,6 +3,7 @@ export type ChannelHealthSnapshot = {
   connected?: boolean;
   enabled?: boolean;
   configured?: boolean;
+  lifecycleMode?: "persistent" | "webhook";
   restartPending?: boolean;
   busy?: boolean;
   activeRuns?: number;
@@ -56,6 +57,9 @@ export function evaluateChannelHealth(
   }
   if (!snapshot.running) {
     return { healthy: false, reason: "not-running" };
+  }
+  if (snapshot.lifecycleMode === "webhook") {
+    return { healthy: true, reason: "healthy" };
   }
   const activeRuns =
     typeof snapshot.activeRuns === "number" && Number.isFinite(snapshot.activeRuns)

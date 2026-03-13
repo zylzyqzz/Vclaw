@@ -38,7 +38,7 @@ vclaw plugins install ./extensions/wechat-kf
 ## Fast CLI setup
 
 ```bash
-vclaw channels add --channel wechat-kf --corp-id wx1234567890 --corp-secret "$WECOM_KF_SECRET" --token "$WECOM_KF_CALLBACK_TOKEN" --encoding-aes-key "$WECOM_KF_AES_KEY" --default-open-kf-id wkf_xxxxxxxxxxxxx --webhook-path /plugins/wechat-kf/default
+vclaw channels add --channel wechat-kf --corp-id wx1234567890 --corp-secret "$WECOM_KF_SECRET" --token "$WECOM_KF_CALLBACK_TOKEN" --encoding-aes-key "$WECOM_KF_AES_KEY" --default-open-kf-id wkf_xxxxxxxxxxxxx --webhook-path /plugins/wechat-kf/default --webhook-url https://bot.example.com/plugins/wechat-kf/default
 ```
 
 ## Minimal config
@@ -53,6 +53,7 @@ vclaw channels add --channel wechat-kf --corp-id wx1234567890 --corp-secret "$WE
       token: "${WECOM_KF_CALLBACK_TOKEN}",
       encodingAesKey: "${WECOM_KF_AES_KEY}",
       webhookPath: "/plugins/wechat-kf/default",
+      webhookUrl: "https://bot.example.com/plugins/wechat-kf/default",
       defaultOpenKfId: "wkf_xxxxxxxxxxxxx",
       dmPolicy: "pairing"
     }
@@ -69,6 +70,8 @@ https://your-domain.example.com/plugins/wechat-kf/default
 ```
 
 Use the same `token` and `encodingAesKey` values you put in Vclaw config.
+The public callback URL should match `webhookUrl`, and its path should match `webhookPath`.
+WeChat KF does not need a long-lived socket session. Keep the Vclaw Gateway process running and expose this HTTPS callback; Enterprise WeChat will call it only when events arrive.
 
 ## Start
 
@@ -76,6 +79,9 @@ Use the same `token` and `encodingAesKey` values you put in Vclaw config.
 vclaw gateway restart
 vclaw channels status --probe
 ```
+
+`channels status --probe` warns if the callback URL is missing, not HTTPS, points to localhost, or uses a path that does not match `webhookPath`.
+`channels status` shows `mode:webhook` for this channel so it is obvious that the route is passive and callback-driven.
 
 When the callback is healthy, Vclaw will:
 

@@ -455,6 +455,24 @@ describe("channel-health-monitor", () => {
     monitor.stop();
   });
 
+  it("does not restart webhook lifecycle channels for stale inbound activity", async () => {
+    const now = Date.now();
+    const manager = createSnapshotManager({
+      "wechat-kf": {
+        default: {
+          running: true,
+          enabled: true,
+          configured: true,
+          lifecycleMode: "webhook",
+          mode: "webhook",
+          lastStartAt: now - 45 * 60_000,
+          lastInboundAt: now - 40 * 60_000,
+        },
+      },
+    });
+    await expectNoRestart(manager);
+  });
+
   describe("stale socket detection", () => {
     const STALE_THRESHOLD = 30 * 60_000;
 

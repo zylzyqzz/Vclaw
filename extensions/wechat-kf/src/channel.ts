@@ -113,6 +113,39 @@ function readSnapshotNumber(snapshot: unknown, key: string): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function parseSnapshotUrl(snapshot: unknown, key: string): URL | null {
+  const raw = readSnapshotString(snapshot, key);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return new URL(raw);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePathForCompare(pathname: string): string {
+  if (!pathname) {
+    return "/";
+  }
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.replace(/\/+$/u, "");
+  }
+  return pathname;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "[::1]" ||
+    normalized === "0.0.0.0"
+  );
+}
+
 export const wechatKfDock: ChannelDock = {
   id: "wechat-kf",
   capabilities: {
@@ -436,12 +469,19 @@ export const wechatKfPlugin: ChannelPlugin<ResolvedWechatKfAccount> = {
   },
   status: {
     defaultRuntime: createDefaultChannelRuntimeState(DEFAULT_ACCOUNT_ID, {
+      lifecycleMode: "webhook" as const,
+      mode: "webhook",
       webhookPath: resolveWechatKfWebhookPath({ accountId: DEFAULT_ACCOUNT_ID }),
       lastWebhookAt: null,
     }),
     collectStatusIssues: (accounts): ChannelStatusIssue[] => {
       const issues = collectStatusIssuesFromLastError("wechat-kf", accounts);
       for (const entry of accounts) {
+        const accountId = String(entry.accountId ?? DEFAULT_ACCOUNT_ID);
+        const webhookPath = readSnapshotString(entry, "webhookPath");
+        const webhookUrlRaw = readSnapshotString(entry, "webhookUrl");
+        const webhookUrl = parseSnapshotUrl(entry, "webhookUrl");
+
         if (
           entry.enabled !== false &&
           entry.configured === true &&
@@ -449,11 +489,73 @@ export const wechatKfPlugin: ChannelPlugin<ResolvedWechatKfAccount> = {
         ) {
           issues.push({
             channel: "wechat-kf",
-            accountId: String(entry.accountId ?? DEFAULT_ACCOUNT_ID),
+            accountId,
             kind: "config",
             message:
               "WeChat KF defaultOpenKfId is missing. Manual sends need explicit open_kfid in the target.",
             fix: "Set channels.wechat-kf.defaultOpenKfId if you want simpler direct sends.",
+          });
+        }
+
+        if (entry.enabled === false || entry.configured !== true) {
+          continue;
+        }
+
+        if (!webhookUrlRaw) {
+          issues.push({
+            channel: "wechat-kf",
+            accountId,
+            kind: "config",
+            message:
+              "WeChat KF webhookUrl is missing. Enterprise WeChat needs a public HTTPS callback URL; webhookPath only defines the local route.",
+            fix: `Set channels.wechat-kf.webhookUrl to your public HTTPS URL${webhookPath ? ` (for example https://bot.example.com${webhookPath})` : ""}.`,
+          });
+          continue;
+        }
+
+        if (!webhookUrl) {
+          issues.push({
+            channel: "wechat-kf",
+            accountId,
+            kind: "config",
+            message: "WeChat KF webhookUrl is not a valid URL.",
+            fix: "Set channels.wechat-kf.webhookUrl to a full https:// callback URL.",
+          });
+          continue;
+        }
+
+        if (webhookUrl.protocol !== "https:") {
+          issues.push({
+            channel: "wechat-kf",
+            accountId,
+            kind: "config",
+            message: "WeChat KF webhookUrl must use HTTPS for Enterprise WeChat callbacks.",
+            fix: "Put Vclaw behind an HTTPS reverse proxy or tunnel, then set channels.wechat-kf.webhookUrl to that public URL.",
+          });
+        }
+
+        if (isLoopbackHostname(webhookUrl.hostname)) {
+          issues.push({
+            channel: "wechat-kf",
+            accountId,
+            kind: "config",
+            message:
+              "WeChat KF webhookUrl points to localhost or another loopback host. Enterprise WeChat cannot reach that address.",
+            fix: "Use a public domain or tunnel URL that reaches your Vclaw Gateway from the internet.",
+          });
+        }
+
+        if (
+          webhookPath &&
+          normalizePathForCompare(webhookUrl.pathname) !== normalizePathForCompare(webhookPath)
+        ) {
+          issues.push({
+            channel: "wechat-kf",
+            accountId,
+            kind: "config",
+            message:
+              "WeChat KF webhookUrl path does not match webhookPath, so callback requests may hit the wrong route.",
+            fix: `Align the public callback URL path with ${webhookPath}.`,
           });
         }
       }
@@ -461,6 +563,8 @@ export const wechatKfPlugin: ChannelPlugin<ResolvedWechatKfAccount> = {
     },
     buildChannelSummary: ({ snapshot }) => ({
       configured: snapshot.configured ?? false,
+      lifecycleMode: snapshot.lifecycleMode ?? "webhook",
+      mode: readSnapshotString(snapshot, "mode") ?? "webhook",
       corpId: readSnapshotString(snapshot, "corpId") ?? null,
       webhookPath: snapshot.webhookPath ?? null,
       webhookUrl: snapshot.webhookUrl ?? null,
@@ -489,6 +593,8 @@ export const wechatKfPlugin: ChannelPlugin<ResolvedWechatKfAccount> = {
       name: account.name,
       enabled: account.enabled,
       configured: account.configured,
+      lifecycleMode: "webhook",
+      mode: "webhook",
       corpId: account.corpId,
       webhookPath: account.webhookPath,
       webhookUrl: account.webhookUrl,
