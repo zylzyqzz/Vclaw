@@ -254,6 +254,62 @@ pnpm vclaw:agentos -- demo --json
 
 On Windows, replace `~/Vclaw` with `E:\Vclaw`.
 
+## Enterprise WeChat Customer Service
+
+If you want official 企微接入, use `wechat-kf`.
+
+### Install the bundled plugin
+
+```bash
+vclaw plugins install ./extensions/wechat-kf
+```
+
+### Fast CLI setup
+
+```bash
+vclaw channels add --channel wechat-kf --corp-id wx1234567890 --corp-secret "$WECOM_KF_SECRET" --token "$WECOM_KF_CALLBACK_TOKEN" --encoding-aes-key "$WECOM_KF_AES_KEY" --default-open-kf-id wkf_xxxxxxxxxxxxx --webhook-path /plugins/wechat-kf/default
+```
+
+### Minimal config
+
+```json5
+{
+  channels: {
+    "wechat-kf": {
+      enabled: true,
+      corpId: "wx1234567890",
+      corpSecret: "${WECOM_KF_SECRET}",
+      token: "${WECOM_KF_CALLBACK_TOKEN}",
+      encodingAesKey: "${WECOM_KF_AES_KEY}",
+      webhookPath: "/plugins/wechat-kf/default",
+      defaultOpenKfId: "wkf_xxxxxxxxxxxxx",
+      dmPolicy: "pairing"
+    }
+  }
+}
+```
+
+### Callback URL to set in Enterprise WeChat
+
+```text
+https://your-domain.example.com/plugins/wechat-kf/default
+```
+
+### Start and check
+
+```bash
+vclaw gateway restart
+vclaw channels status --probe
+```
+
+Manual sends use:
+
+```text
+open_kfid:<OPEN_KFID>|external_userid:<EXTERNAL_USERID>
+```
+
+If `defaultOpenKfId` is set, you can also send to a bare `external_userid`.
+
 ## Portable Reinstall
 
 If you want a new install to immediately recover memory settings and usable skills, pack the

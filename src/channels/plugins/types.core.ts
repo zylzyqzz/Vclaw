@@ -22,6 +22,12 @@ export type ChannelSetupInput = {
   name?: string;
   token?: string;
   tokenFile?: string;
+  corpId?: string;
+  corpSecret?: string;
+  encodingAesKey?: string;
+  defaultOpenKfId?: string;
+  dmPolicy?: string;
+  allowFrom?: string[];
   botToken?: string;
   appToken?: string;
   signalNumber?: string;

@@ -25,6 +25,12 @@ const optionNamesAdd = [
   "name",
   "token",
   "tokenFile",
+  "corpId",
+  "corpSecret",
+  "encodingAesKey",
+  "defaultOpenKfId",
+  "dmPolicy",
+  "allowFrom",
   "botToken",
   "appToken",
   "signalNumber",
@@ -85,6 +91,10 @@ export function registerChannelsCli(program: Command) {
           [
             "vclaw channels add --channel telegram --token <token>",
             "Add or update a channel account non-interactively.",
+          ],
+          [
+            "vclaw channels add --channel wechat-kf --corp-id <id> --corp-secret <secret> --token <token> --encoding-aes-key <key> --default-open-kf-id <id> --webhook-path /plugins/wechat-kf/default",
+            "Add Enterprise WeChat customer service with the official callback path.",
           ],
           ["vclaw channels login --channel telegram", "Verify Telegram auth/runtime state."],
         ])}\n\n${theme.muted("Docs:")} ${formatDocsLink(
@@ -171,8 +181,14 @@ export function registerChannelsCli(program: Command) {
     .option("--channel <name>", `Channel (${channelNames})`)
     .option("--account <id>", "Account id (default when omitted)")
     .option("--name <name>", "Display name for this account")
-    .option("--token <token>", "Telegram bot token")
-    .option("--token-file <path>", "Bot token file (Telegram)")
+    .option("--token <token>", "Primary token or callback token")
+    .option("--token-file <path>", "Primary token file")
+    .option("--corp-id <id>", "Enterprise WeChat corpId")
+    .option("--corp-secret <secret>", "Enterprise WeChat corpSecret")
+    .option("--encoding-aes-key <key>", "Enterprise WeChat callback EncodingAESKey")
+    .option("--default-open-kf-id <id>", "Default Enterprise WeChat open_kfid")
+    .option("--dm-policy <policy>", "DM policy (open|pairing|allowlist)")
+    .option("--allow-from <list>", "Allowlist targets (comma-separated)")
     .option("--use-env", "Use env token (default account only)", false)
     .action(async (opts, command) => {
       await runChannelsCommand(async () => {

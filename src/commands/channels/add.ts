@@ -227,11 +227,20 @@ export async function channelsAddCommand(
         : undefined;
   const groupChannels = parseList(opts.groupChannels);
   const dmAllowlist = parseList(opts.dmAllowlist);
+  const allowFrom = Array.isArray(opts.allowFrom)
+    ? opts.allowFrom.map((entry) => String(entry)).filter(Boolean)
+    : parseList(opts.allowFrom);
 
   const input: ChannelSetupInput = {
     name: opts.name,
     token: opts.token,
     tokenFile: opts.tokenFile,
+    corpId: opts.corpId,
+    corpSecret: opts.corpSecret,
+    encodingAesKey: opts.encodingAesKey,
+    defaultOpenKfId: opts.defaultOpenKfId,
+    dmPolicy: opts.dmPolicy,
+    allowFrom,
     botToken: opts.botToken,
     appToken: opts.appToken,
     signalNumber: opts.signalNumber,

@@ -1,0 +1,42 @@
+{
+  "name": "@vclaw/wechat-kf",
+  "version": "2026.3.13",
+  "private": true,
+  "description": "Vclaw WeChat KF (Enterprise WeChat customer service) channel plugin",
+  "type": "module",
+  "dependencies": {
+    "fast-xml-parser": "^5.3.8"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.13"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "wechat-kf",
+      "label": "WeChat KF",
+      "selectionLabel": "WeChat KF (企微客服)",
+      "detailLabel": "Enterprise WeChat Customer Service",
+      "docsPath": "/channels/wechat-kf",
+      "docsLabel": "wechat-kf",
+      "blurb": "Enterprise WeChat customer service via official callback + sync_msg APIs.",
+      "aliases": [
+        "wecom-kf",
+        "wechatkf",
+        "wecom"
+      ],
+      "order": 58
+    },
+    "install": {
+      "localPath": "extensions/wechat-kf",
+      "defaultChoice": "local"
+    }
+  }
+}

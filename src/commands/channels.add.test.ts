@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDefaultChannelPluginRegistryForTests } from "./channel-test-helpers.js";
 import { configMocks, offsetMocks } from "./channels.mock-harness.js";
 import { baseConfigSnapshot, createTestRuntime } from "./test-runtime-config-helpers.js";
@@ -12,6 +12,7 @@ describe("channelsAddCommand", () => {
   });
 
   beforeEach(async () => {
+    vi.stubEnv("OPENCLAW_ENABLE_ALL_CHANNELS", "1");
     configMocks.readConfigFileSnapshot.mockClear();
     configMocks.writeConfigFile.mockClear();
     offsetMocks.deleteTelegramUpdateOffset.mockClear();
@@ -19,6 +20,10 @@ describe("channelsAddCommand", () => {
     runtime.error.mockClear();
     runtime.exit.mockClear();
     setDefaultChannelPluginRegistryForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("clears telegram update offsets when the token changes", async () => {
@@ -58,5 +63,43 @@ describe("channelsAddCommand", () => {
     );
 
     expect(offsetMocks.deleteTelegramUpdateOffset).not.toHaveBeenCalled();
+  });
+
+  it("writes wechat-kf config through the channels add command", async () => {
+    configMocks.readConfigFileSnapshot.mockResolvedValue({
+      ...baseConfigSnapshot,
+      config: {},
+    });
+
+    await channelsAddCommand(
+      {
+        channel: "wechat-kf",
+        corpId: "wx1234567890",
+        corpSecret: "corp-secret",
+        token: "callback-token",
+        encodingAesKey: "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
+        defaultOpenKfId: "wkf_123",
+        webhookPath: "/plugins/wechat-kf/default",
+        dmPolicy: "pairing",
+      },
+      runtime,
+      { hasFlags: true },
+    );
+
+    expect(configMocks.writeConfigFile).toHaveBeenCalledTimes(1);
+    expect(configMocks.writeConfigFile).toHaveBeenCalledWith({
+      channels: {
+        "wechat-kf": {
+          enabled: true,
+          corpId: "wx1234567890",
+          corpSecret: "corp-secret",
+          token: "callback-token",
+          encodingAesKey: "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
+          defaultOpenKfId: "wkf_123",
+          webhookPath: "/plugins/wechat-kf/default",
+          dmPolicy: "pairing",
+        },
+      },
+    });
   });
 });
