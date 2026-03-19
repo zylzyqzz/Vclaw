@@ -6,7 +6,7 @@
 # This stage extracts only the package.json files we need from extensions/,
 # so the main build layer is not invalidated by unrelated extension source changes.
 ARG OPENCLAW_EXTENSIONS=""
-FROM node:22-bookworm@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935 AS ext-deps
+FROM node:22-bookworm@sha256:f90672bf4c76dfc077d17be4c115b1ae7731d2e8558b457d86bca42aeb193866 AS ext-deps
 ARG OPENCLAW_EXTENSIONS
 COPY extensions /tmp/extensions
 RUN mkdir -p /out && \
@@ -17,7 +17,7 @@ RUN mkdir -p /out && \
       fi; \
     done
 
-FROM node:22-bookworm@sha256:cd7bcd2e7a1e6f72052feb023c7f6b722205d3fcab7bbcbd2d1bfdab10b1e935
+FROM node:22-bookworm@sha256:f90672bf4c76dfc077d17be4c115b1ae7731d2e8558b457d86bca42aeb193866
 
 # OCI base-image metadata for downstream image consumers.
 # If you change these annotations, also update:
